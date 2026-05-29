@@ -102,7 +102,7 @@ namespace LouveSystems.K2.Lib
         {
             this.rules = parameters;
 
-            bool hasCouncilRealm = parameters.board == EBoardType.CouncilRegion;
+            bool hasCouncilRealm = parameters.board.type == EBoardType.CouncilRegion;
 
             int realmCountWithoutCouncil = parameters.additionalRealmsCount + playerParams.realmsToInitialize.Length;
             int realmCount = realmCountWithoutCouncil + (hasCouncilRealm ? 1 : 0);
@@ -430,7 +430,7 @@ namespace LouveSystems.K2.Lib
             // 5,6,7,8,9 => 3
 
             // Small hack to bump if we have 9 realms on a 3v3 grid so that the council can have the central space
-            if (realmCountWithoutCouncil == 9 && rules.board == EBoardType.CouncilRegion) {
+            if (realmCountWithoutCouncil == 9 && rules.board.type == EBoardType.CouncilRegion) {
                 realmCountWithoutCouncil++;
             }
 
@@ -1226,7 +1226,12 @@ namespace LouveSystems.K2.Lib
 
         private void InitializeCouncilRealm(byte realmIndex, in Position startingPosition)
         {
-            InitializeRealm(realmIndex, startingPosition, (byte)Math.Max(0, SquareSideLength - 3 + rules.councilRealmRegionSize));
+            InitializeRealm(
+                realmIndex, 
+                startingPosition, 
+                (byte)Math.Max(0, SquareSideLength - 3 + rules.board.council.councilRealmRegionSize)
+            );
+
             for (int i = 0; i < regions.Length; i++) {
                 if (IsCouncilRegion(i) && regions[i].RelevantBuilding == EBuilding.None) {
                     regions[i].AddBuilding(EBuilding.Church);

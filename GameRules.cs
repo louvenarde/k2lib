@@ -6,7 +6,113 @@ namespace LouveSystems.K2.Lib
     [System.Serializable]
     public class GameRules : IBinarySerializable
     {
-        public const byte VERSION = 8;
+        public const byte VERSION = 9;
+
+        [System.Serializable]
+        public struct GlobalBoardSettings : IBinarySerializableWithVersion
+        {
+            [System.Serializable]
+            public struct CouncilBoardSettings : IBinarySerializable
+            {
+                public byte councilRealmRegionSize; // 1
+
+                public void Read(BinaryReader from)
+                {
+                    councilRealmRegionSize = from.ReadByte();
+                }
+
+                public void Write(BinaryWriter into)
+                {
+                    into.Write(councilRealmRegionSize);
+                }
+            }
+
+            [System.Serializable]
+            public struct BeastWorldBoardSettings : IBinarySerializable
+            {
+                public struct NavigationalPreferences : IBinarySerializable
+                {
+                    public bool preferFields; // true
+                    public bool avoidsNonFieldBuildings; // true
+                    public bool avoidsTakenLands; // true
+
+                    public void Read(BinaryReader from)
+                    {
+                        preferFields = from.ReadBoolean();
+                        avoidsNonFieldBuildings = from.ReadBoolean();
+                        avoidsTakenLands = from.ReadBoolean();
+                    }
+
+                    public void Write(BinaryWriter into)
+                    {
+                        into.Write(preferFields);
+                        into.Write(avoidsNonFieldBuildings);
+                        into.Write(avoidsTakenLands);
+                    }
+                }
+                
+                public byte movementsWhenEnraged; // 3
+                public byte movementsWhenCalm; // 1
+                public byte moveEveryXTurnsWhenCalm; // 1
+                public byte rageDuration; // 2
+                public bool enragedWhenSurrounded; // true
+                public bool enragedWhenAttacked; // true
+                public byte hotPathLength; // 5
+
+                public NavigationalPreferences navigationWhenCalm; // True to all
+                public NavigationalPreferences navigationWhenEnraged; // false to all
+
+                public byte beastCount;
+
+                public void Write(BinaryWriter into)
+                {
+                    into.Write(movementsWhenEnraged);
+                    into.Write(movementsWhenCalm);
+                    into.Write(moveEveryXTurnsWhenCalm);
+                    into.Write(rageDuration);
+                    into.Write(enragedWhenSurrounded);
+                    into.Write(enragedWhenAttacked);
+                    into.Write(hotPathLength);
+                    into.Write(navigationWhenCalm);
+                    into.Write(navigationWhenEnraged);
+                    into.Write(beastCount);
+                }
+
+                public void Read(BinaryReader from)
+                {
+                    movementsWhenEnraged = from.ReadByte();
+                    movementsWhenCalm = from.ReadByte();
+                    moveEveryXTurnsWhenCalm = from.ReadByte();
+                    rageDuration = from.ReadByte();
+                    enragedWhenSurrounded = from.ReadBoolean();
+                    enragedWhenAttacked = from.ReadBoolean();
+                    hotPathLength = from.ReadByte();
+                    from.Read(ref navigationWhenCalm);
+                    from.Read(ref navigationWhenEnraged);
+
+                    beastCount = from.ReadByte();
+                }
+            }
+
+            public EBoardType type;
+
+            public CouncilBoardSettings council;
+            public BeastWorldBoardSettings beastWorld;
+
+            public void Read(byte version, BinaryReader from)
+            {
+                type = (EBoardType)from.ReadByte();
+                from.Read(ref council);
+                from.Read(ref beastWorld);
+            }
+
+            public void Write(BinaryWriter into)
+            {
+                into.Write((byte)type);
+                into.Write(council);
+                into.Write(beastWorld);
+            }
+        }
 
         [System.Serializable]
         public struct GlobalFactionSettings : IBinarySerializableWithVersion
@@ -234,10 +340,6 @@ namespace LouveSystems.K2.Lib
 
         public byte additionalRealmsCount = 1;
 
-        public EBoardType board =  EBoardType.CouncilRegion;
-
-        public byte councilRealmRegionSize = 1;
-
         public byte initialSafetyMarginBetweenRealms = 1;
 
         public byte initialRealmsSize = 1;
@@ -290,14 +392,14 @@ namespace LouveSystems.K2.Lib
 
         public GlobalFactionSettings factions = new GlobalFactionSettings();
 
+        public GlobalBoardSettings board = new GlobalBoardSettings();
+
         public void Write(BinaryWriter into)
         {
             into.Write(VERSION);
 
             into.Write(initialRealmsSize);
             into.Write(additionalRealmsCount);
-            into.Write(councilRealmRegionSize);
-            into.Write((byte)board);
             into.Write(startingGold);
             into.Write(initialSafetyMarginBetweenRealms);
             into.Write(initialVoteTurnsDelay);
@@ -333,6 +435,8 @@ namespace LouveSystems.K2.Lib
             factions.Write(into);
 
             into.Write(goTakeDestroysBuildings);
+
+            board.Write(into);
         }
 
         public void Read(BinaryReader from)
@@ -345,8 +449,12 @@ namespace LouveSystems.K2.Lib
 
             initialRealmsSize = from.ReadByte();
             additionalRealmsCount = from.ReadByte();
-            councilRealmRegionSize = from.ReadByte();
-            board = (EBoardType)from.ReadByte();
+
+            if (version <= 8) {
+                byte councilRealmRegionSize = from.ReadByte();
+                board.type = (EBoardType)from.ReadByte();
+            }
+
             startingGold = from.ReadByte();
             initialSafetyMarginBetweenRealms = from.ReadByte();
             initialVoteTurnsDelay = from.ReadByte();
@@ -383,6 +491,10 @@ namespace LouveSystems.K2.Lib
 
             if (version >= 3) {
                 goTakeDestroysBuildings = from.ReadBoolean();
+            }
+
+            if (version >= 9) {
+                board.Read(version, from);
             }
         }
 

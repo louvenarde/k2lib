@@ -10,11 +10,14 @@ namespace LouveSystems.K2.Lib
 
         public void ComputeEffects(ManagedRandom random, in GameState state, out ITransformEffect[] effects);
 
-        public static IBoard CreateBoard(EBoardType type, in World world)
+        public static IBoard CreateBoard(GameRules.GlobalBoardSettings settings, in World world)
         {
-            switch(type) {
+            switch(settings.type) {
                 default:
-                    return new EmptyBoard(type);
+                    return new EmptyBoard(settings.type);
+
+                case EBoardType.BeastWorld:
+                    return new BeastWorldBoard(settings.beastWorld, world);
             }
         }
     }
