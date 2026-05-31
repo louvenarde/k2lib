@@ -1,7 +1,6 @@
 
 namespace LouveSystems.K2.Lib
 {
-    using Codice.CM.Client.Differences.Graphic;
     using NUnit.Framework;
     using System.Collections.Generic;
     using System.IO;
