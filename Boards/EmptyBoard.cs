@@ -1,6 +1,7 @@
 
 namespace LouveSystems.K2.Lib
 {
+    using System.Collections.Generic;
     using System.IO;
 
     public struct EmptyBoard : IBoard
@@ -17,9 +18,8 @@ namespace LouveSystems.K2.Lib
             return new EmptyBoard(Type);
         }
 
-        public void ComputeEffects(ManagedRandom random, in GameState state, out ITransformEffect[] effects)
+        public void ComputeEffects(ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
         {
-            effects = new ITransformEffect[0];
         }
 
         public void Write(BinaryWriter into)

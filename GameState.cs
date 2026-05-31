@@ -164,7 +164,7 @@ namespace LouveSystems.K2.Lib
                 int attacksStart = effectsList.Count;
 
                 var attacks = TakeAttacks(attacksComputationDuplicate.world, remainingTransforms);
-                PlayAttacks(in attacksComputationDuplicate.world, random, attacks, effectsList);
+                PlayAttacks(in attacksComputationDuplicate, random, attacks, effectsList);
 
                 // Order subjugations AFTER attacks
                 List<ITransformEffect.ConquestEffect> conquestsThatLeadToSubjugations = new List<ITransformEffect.ConquestEffect>();
@@ -203,46 +203,8 @@ namespace LouveSystems.K2.Lib
 
             // Border gore
             {
-                GameState borderGoreComputationDuplicate = Duplicate();
-                
-                // From realms
-                byte depth = 0;
-                while (true) {
-                    int count = effectsList.Count;
-                    ApplyEffects(effectsList, ref borderGoreComputationDuplicate);
-                    borderGoreComputationDuplicate.ResolveRealmsBorderGore(in borderGoreComputationDuplicate.world, random, effectsList, depth);
-
-                    depth++;
-
-                    if (effectsList.Count > count) {
-                        continue;
-                    }
-
-                    break;
-                }
-
-                // From Neutral
-                if (rules.neutralRegionStarvation) {
-                    depth = 0;
-                    while (true) {
-                        int count = effectsList.Count;
-                        ApplyEffects(effectsList, ref borderGoreComputationDuplicate);
-                        borderGoreComputationDuplicate.ResolveNeutralBorderGore(in borderGoreComputationDuplicate.world, effectsList, depth);
-
-                        depth++;
-
-                        if (effectsList.Count > count) {
-                            continue;
-                        }
-
-                        break;
-                    }
-                }
+                ResolveBorderGore(random, in effectsList);
             }
-
-            // Environmental turn
-            board.ComputeEffects(random, in this, out ITransformEffect[] environmentalEffects);
-            effectsList.AddRange(environmentalEffects);
 
             // Ongoing subjugation persistence
             {
@@ -291,6 +253,12 @@ namespace LouveSystems.K2.Lib
 
                 PlayConstructions(in world, constructions, effectsList);
             }
+
+            // Environmental turn
+            board.ComputeEffects(random, in this, in effectsList);
+
+            // Resolve border gore again in case the board has modified ownership of some parts
+            ResolveBorderGore(random, in effectsList);
 
             // Others - We play them first to avoid visual oddities
             {
@@ -343,8 +311,48 @@ namespace LouveSystems.K2.Lib
             return gameState;
         }
 
-        private void ResolveNeutralBorderGore(in World world, in List<ITransformEffect> effects, byte depth)
+        private void ResolveBorderGore(ManagedRandom random, in List<ITransformEffect> effectsList)
         {
+            GameState borderGoreComputationDuplicate = Duplicate();
+            ApplyEffects(effectsList, ref borderGoreComputationDuplicate);
+
+            // From realms
+            byte depth = 0;
+            while (true) {
+                borderGoreComputationDuplicate.ResolveRealmsBorderGore(in borderGoreComputationDuplicate.world, random, out ITransformEffect[] effects, depth);
+                
+                if (effects.Length > 0) {
+                    ApplyEffects(effects, ref borderGoreComputationDuplicate);
+                    effectsList.AddRange(effects);
+                    depth++;
+                    continue;
+                }
+
+                break;
+            }
+
+            // From Neutral
+            if (rules.neutralRegionStarvation) {
+                depth = 0;
+                while (true) {
+                    borderGoreComputationDuplicate.ResolveNeutralBorderGore(in borderGoreComputationDuplicate.world, out ITransformEffect[] effects, depth);
+
+                    if (effects.Length > 0) {
+                        ApplyEffects(effects, ref borderGoreComputationDuplicate);
+                        effectsList.AddRange(effects);
+                        depth++;
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        private void ResolveNeutralBorderGore(in World world, out ITransformEffect[] effects, byte depth)
+        {
+            List<ITransformEffect> effectsToAdd = new List<ITransformEffect>();
+
             // Next we solve border gore for neutral regions
             {
                 List<int> isolatedNeutralRegions = new List<int>();
@@ -423,12 +431,16 @@ namespace LouveSystems.K2.Lib
                 for (int i = 0; i < isolatedNeutralRegions.Count; i++) {
                     int regionIndex = isolatedNeutralRegions[i];
                     // Random is NOT ALLOWED!
-                    SolveBorderGoreForRegion(world, randomOptional: null, regionIndex, effects, depth, allowNeutralization: true);
+                    if (SolveBorderGoreForRegion(world, randomOptional: null, regionIndex, out var effect, depth, allowNeutralization: true)) {
+                        effectsToAdd.Add(effect);
+                    }
                 }
             }
+
+            effects = effectsToAdd.ToArray();
         }
 
-        private void ResolveRealmsBorderGore(in World world, ManagedRandom random, in List<ITransformEffect> effects, byte depth)
+        private void ResolveRealmsBorderGore(in World world, ManagedRandom random, out ITransformEffect[] effects, byte depth)
         {
             List<ITransformEffect> effectsToAdd = new List<ITransformEffect>();
 
@@ -440,7 +452,7 @@ namespace LouveSystems.K2.Lib
                 SolveBorderGoreForRealm(world, random, i, effectsToAdd, depth);
             }
 
-            effects.AddRange(effectsToAdd.OrderBy(o => o is ITransformEffect.ConquestEffect conquest && conquest.isACoinFlip));
+            effects = effectsToAdd.OrderBy(o => o is ITransformEffect.ConquestEffect conquest && conquest.isACoinFlip).ToArray();
         }
 
         private void SolveBorderGoreForRealm(in World world,  ManagedRandom random, byte realm, in List<ITransformEffect> effects, byte depth)
@@ -525,13 +537,18 @@ namespace LouveSystems.K2.Lib
             {
                 for (int i = 0; i < remainingRegionsToConnect.Count; i++) {
                     int regionIndex = remainingRegionsToConnect[i];
-                    SolveBorderGoreForRegion(world, random, regionIndex, effects, depth, allowNeutralization : false);
+                    
+                    if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization : false)) {
+                        effects.Add(effect);
+                    }
                 }
             }
         }
 
-        private void SolveBorderGoreForRegion(in World world, ManagedRandom randomOptional, int regionIndex, in List<ITransformEffect> effects, byte depth, bool allowNeutralization)
+        private bool SolveBorderGoreForRegion(in World world, ManagedRandom randomOptional, int regionIndex, out ITransformEffect effect, byte depth, bool allowNeutralization)
         {
+            effect = default;
+
             if (world.GetNaturalOwnerFromNeighbors(
                 regionIndex, 
                 randomOptional,
@@ -543,33 +560,37 @@ namespace LouveSystems.K2.Lib
                 if (world.Regions[regionIndex].IsOwnedBy(newOwner)) {
                     // This happens - it's okay, the next pass of solving will fix it
                 }
-                else { 
-                    effects.Add(new ITransformEffect.StarvationEffect() {
+                else {
+                    effect = new ITransformEffect.StarvationEffect() {
                         hasNewOwner = true,
                         newOwningRealm = newOwner,
                         regionIndex = regionIndex,
                         waveIndex = depth,
                         wasCoinFlip = wasCoinFlip
-                    });
+                    };
                 }
             }
             else {
                 // Lose ownership
                 if (world.Regions[regionIndex].isOwned && allowNeutralization) {
-                    effects.Add(new ITransformEffect.StarvationEffect() {
+                    effect = new ITransformEffect.StarvationEffect() {
                         hasNewOwner = false,
                         newOwningRealm = default,
                         regionIndex = regionIndex,
                         waveIndex = depth,
                         wasCoinFlip = false
-                    });
+                    };
                 }
             }
+
+            return effect != default;
         }
 
-        private void PlayAttackedRegion(in World world, ManagedRandom random, List<RegionAttackRegionTransform> attackOrders, in List<ITransformEffect> effects)
+        private void PlayAttackedRegion(in GameState state, ManagedRandom random, List<RegionAttackRegionTransform> attackOrders, in List<ITransformEffect> effects)
         {
             Logger.Trace($"Playing {attackOrders.Count} attacks on region {attackOrders[0].targetRegionIndex} : \n{string.Join('\n', attackOrders)}");
+
+            World world = state.world;
 
             bool majorityAttackingRealmIsACoinFlip = false;
             List<byte> otherCoinFlippers = new List<byte>();
@@ -764,12 +785,18 @@ namespace LouveSystems.K2.Lib
 
                     effects.Add(subjugation);
                 }
+
+                if (state.board is BeastWorldBoard beastWorld) {
+                    beastWorld.GetConquestEffects(in state, in effect, in effects);
+                }
             }
         }
 
-        private void PlayAttacks(in World world, ManagedRandom random, List<RegionAttackRegionTransform> remainingAttacks, in List<ITransformEffect> effects)
+        private void PlayAttacks(in GameState state, ManagedRandom random, List<RegionAttackRegionTransform> remainingAttacks, in List<ITransformEffect> effects)
         {
             Logger.Trace($"Playing {remainingAttacks.Count} attacks: \n{string.Join('\n', remainingAttacks)}");
+            
+            World world = state.world;
 
             while (remainingAttacks.Count > 0) {
                 // Play attack
@@ -790,7 +817,7 @@ namespace LouveSystems.K2.Lib
                     remainingAttacks.RemoveAll(attacksOnSameRegion.Contains);
                 }
 
-                PlayAttackedRegion(in world, random, attacksOnSameRegion, effects);
+                PlayAttackedRegion(in state, random, attacksOnSameRegion, effects);
             }
         }
 

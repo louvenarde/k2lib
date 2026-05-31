@@ -30,17 +30,22 @@ namespace LouveSystems.K2.Lib
             [System.Serializable]
             public struct BeastWorldBoardSettings : IBinarySerializable
             {
+                [System.Serializable]
                 public struct NavigationalPreferences : IBinarySerializable
                 {
                     public bool preferFields; // true
                     public bool avoidsNonFieldBuildings; // true
                     public bool avoidsTakenLands; // true
+                    public bool hardHotPathAvoidance; // true
+                    public bool hardTakenLandsAvoidance; // true for calm, false for enraged
 
                     public void Read(BinaryReader from)
                     {
                         preferFields = from.ReadBoolean();
                         avoidsNonFieldBuildings = from.ReadBoolean();
                         avoidsTakenLands = from.ReadBoolean();
+                        hardHotPathAvoidance = from.ReadBoolean();
+                        hardTakenLandsAvoidance = from.ReadBoolean();
                     }
 
                     public void Write(BinaryWriter into)
@@ -48,6 +53,8 @@ namespace LouveSystems.K2.Lib
                         into.Write(preferFields);
                         into.Write(avoidsNonFieldBuildings);
                         into.Write(avoidsTakenLands);
+                        into.Write(hardHotPathAvoidance);
+                        into.Write(hardTakenLandsAvoidance);
                     }
                 }
                 
@@ -58,6 +65,7 @@ namespace LouveSystems.K2.Lib
                 public bool enragedWhenSurrounded; // true
                 public bool enragedWhenAttacked; // true
                 public byte hotPathLength; // 5
+
 
                 public NavigationalPreferences navigationWhenCalm; // True to all
                 public NavigationalPreferences navigationWhenEnraged; // false to all

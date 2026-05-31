@@ -14,10 +14,12 @@ namespace LouveSystems.K2.Lib
         internal delegate void RegionConquestDelegate(int regionIndex, byte newOwner, byte? previousOwner);
         internal delegate void RegionBuiltDelegate(int regionIndex, EBuilding building);
         internal delegate void RegionDestroyedDelegate(int regionIndex, EBuilding building, byte? destructor);
+        internal delegate void RegionNeutralizationDelegate(int regionIndex);
         internal event RegionStarvationDelegate OnRegionStarved;
         internal event RegionConquestDelegate OnRegionConquest;
         internal event RegionBuiltDelegate OnRegionBuilt;
         internal event RegionDestroyedDelegate OnRegionDestroyed;
+        internal event RegionNeutralizationDelegate OnRegionNeutralizedFromHazard;
 
         internal delegate void SilverTreasuryChangedDelegate(byte realmIndex, uint amount);
         internal event SilverTreasuryChangedDelegate OnSilverTreasuryGained;
@@ -198,6 +200,20 @@ namespace LouveSystems.K2.Lib
             realms = this.realms;
         }
 
+        public void NeutralizeRegionFromHazard(int regionIndex)
+        {
+            bool hadOwner = regions[regionIndex].GetOwner(out byte previousOwner);
+
+            if (regions[regionIndex].Building != EBuilding.None) {
+                OnRegionDestroyed?.Invoke(regionIndex, regions[regionIndex].Building, default);
+                regions[regionIndex].RemoveBuilding();
+            }
+
+            regions[regionIndex].isOwned = false;
+
+            OnRegionNeutralizedFromHazard?.Invoke(regionIndex);
+        }
+
         public void StarveRegion(int regionIndex, bool hasNewOwner, byte newOwningRealm)
         {
             bool hadOwner = regions[regionIndex].GetOwner(out byte previousOwner);
@@ -235,7 +251,7 @@ namespace LouveSystems.K2.Lib
             OnRegionConquest?.Invoke(
                 regionIndex,
                 newOwningRealm,
-                hadOwner ? previousOwner : default
+                hadOwner ? previousOwner : null
             );
         }
 

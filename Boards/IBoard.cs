@@ -1,6 +1,7 @@
 
 namespace LouveSystems.K2.Lib
 {
+    using System.Collections.Generic;
 
     public interface IBoard : IBinarySerializable
     {
@@ -8,7 +9,7 @@ namespace LouveSystems.K2.Lib
 
         public IBoard Duplicate();
 
-        public void ComputeEffects(ManagedRandom random, in GameState state, out ITransformEffect[] effects);
+        public void ComputeEffects(ManagedRandom random, in GameState state, in List<ITransformEffect> effects);
 
         public static IBoard CreateBoard(GameRules.GlobalBoardSettings settings, in World world)
         {
