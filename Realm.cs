@@ -247,6 +247,8 @@ namespace LouveSystems.K2.Lib
         public bool isSubjugated;
         public byte subjugatedBy;
 
+        public byte beastsAttacked;
+
         private ExtremelyNormalConstantSizeList subjugatingAttacksReceived;
 
         public int GetHash()
@@ -260,6 +262,8 @@ namespace LouveSystems.K2.Lib
             for (int i = 0; i < subjugatingAttacksReceived.Count; i++) {
                 Logger.Trace($"---> Hash of {nameof(subjugatingAttacksReceived)}[{i}] is {Extensions.Hash(subjugatingAttacksReceived[i])}");
             }
+
+            Logger.Trace($"-> Hash of {nameof(beastsAttacked)} is {Extensions.Hash(beastsAttacked):X8}");
 
 
             int hash = Extensions.Hash(
@@ -338,6 +342,7 @@ namespace LouveSystems.K2.Lib
             availableDecisions = from.ReadInt32();
             isFavoured = from.ReadBoolean();
             factionIndex = from.ReadByte();
+            beastsAttacked = from.ReadByte();
         }
 
         public void Write(BinaryWriter into)
@@ -346,6 +351,7 @@ namespace LouveSystems.K2.Lib
             into.Write(availableDecisions);
             into.Write(isFavoured);
             into.Write(factionIndex);
+            into.Write(beastsAttacked);
         }
 
         public override string ToString()

@@ -662,6 +662,18 @@ namespace LouveSystems.K2.Lib
 
                         return false;
                     }
+
+                case EVotingCriteria.BeastAttacked: {
+                        GetRealmIndicesWithMostOf(
+                            gameState,
+                            (in GameState state, byte realmIndex) => state.world.Realms[realmIndex].beastsAttacked,
+                            winnerRealmIndices,
+                            minScore: 1,
+                            stretchPercentageAllowed: 20
+                        );
+
+                        return winnerRealmIndices.Count > 0;
+                    }
             }
         }
 

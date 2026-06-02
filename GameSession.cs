@@ -341,7 +341,8 @@ namespace LouveSystems.K2.Lib
 
             // Reset favours
             for (byte realmIndex = 0; realmIndex < gameState.world.Realms.Count; realmIndex++) {
-                gameState.world.SetRealmFavoured(realmIndex, false); 
+                gameState.world.SetRealmFavoured(realmIndex, false);
+                gameState.world.ClearBeastAttacks(realmIndex);
             }
 
             statisticsRecorder.AddVotes(gameState);

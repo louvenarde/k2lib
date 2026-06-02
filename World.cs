@@ -279,6 +279,16 @@ namespace LouveSystems.K2.Lib
             this.realms[realmIndex].isFavoured = favoured;
         }
 
+        public void ClearBeastAttacks(byte realmIndex)
+        {
+            this.realms[realmIndex].beastsAttacked = 0;
+        }
+
+        public void NotifyBeastAttacked(byte realmIndex)
+        {
+            this.realms[realmIndex].beastsAttacked++;
+        }
+
         public void CancelPartialSubjugation(byte attackingRealmIndex, byte targetRealmIndex)
         {
             realms[targetRealmIndex].RemoveSubjugatingAttackFrom(attackingRealmIndex);

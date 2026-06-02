@@ -14,6 +14,7 @@ namespace LouveSystems.K2.Lib
         CouncilNeighbor,
         BestAdministration,
         Martyrdom,
+        BeastAttacked,
 
         COUNT
     }
