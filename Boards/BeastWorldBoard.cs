@@ -141,10 +141,22 @@ namespace LouveSystems.K2.Lib
             }
         }
 
+        public void GetPredictedMoves(byte beastIndex, in GameState state, in List<int> predictedMoves)
+        {
+            byte movements = beasts[beastIndex].IsEnraged ?
+                   state.rules.board.beastWorld.movementsWhenEnraged :
+                   state.rules.board.beastWorld.movementsWhenCalm;
+
+            state.world.GetNeighboringRegions(beastIndex, movements, predictedMoves);
+
+            var hotPath = beasts[beastIndex].hotPath;
+            predictedMoves.RemoveAll(hotPath.Contains);
+        }
+
         private void ComputeBeastEffects(byte beastIndex, ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
         {
-            ComputeBeastRage(beastIndex, in state, effects);
             ComputeBeastMovements(beastIndex, random, state, effects);
+            ComputeBeastRage(beastIndex, in state, effects);
 
         }
 
@@ -220,6 +232,7 @@ namespace LouveSystems.K2.Lib
 
                 var regions = state.world.Regions;
                 ref Beast beast = ref beastWorld.beasts[beastIndex];
+                bool prefersFields = beast.Navigation.preferFields;
 
                 neighboringRegionsCache.Clear();
 
@@ -230,7 +243,7 @@ namespace LouveSystems.K2.Lib
                 }
 
                 if (beast.Navigation.hardTakenLandsAvoidance) {
-                    neighboringRegionsCache.RemoveAll(o => regions[o].isOwned);
+                    neighboringRegionsCache.RemoveAll(o => regions[o].isOwned && (!prefersFields || regions[o].Building != EBuilding.Fields));
                 }
 
                 {

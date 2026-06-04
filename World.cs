@@ -1067,6 +1067,39 @@ namespace LouveSystems.K2.Lib
             return outputPosition;
         }
 
+        public void GetNeighboringRegions(int index, byte depth, in List<int> neighbors)
+        {
+            if (depth == 0) {
+                neighbors.Add(index);
+                return;
+            }
+
+            int startIndex = neighbors.Count;
+            GetNeighboringRegions(index, neighbors);
+            int count = neighbors.Count - startIndex;
+
+            depth--;
+            if (depth > 0) {
+                for (int i = startIndex; i < count; i++) {
+                    GetNeighboringRegions(index, depth, in neighbors);
+                }
+            }
+
+            count = neighbors.Count - startIndex;
+
+            // Remove duplicates
+            for (int i = startIndex; i < count; i++) {
+                int value = neighbors[i];
+                for (int j = i; j < count; j++) {
+                    if (neighbors[j] == value) {
+                        neighbors.RemoveAt(j);
+                        j--;
+                        count--;
+                    }
+                }
+            }
+        }
+
         public void GetNeighboringRegions(int index, in List<int> neighbors)
         {
             Position position = Position(index);

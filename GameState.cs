@@ -533,12 +533,12 @@ namespace LouveSystems.K2.Lib
                     .ToList();
             }
 
-            // 5. Solve each region. If a region does not have a clear owner, skip it for now
+            // 5. Solve each region. If a region does not have a clear owner, coin flip it or neutralize it
             {
                 for (int i = 0; i < remainingRegionsToConnect.Count; i++) {
                     int regionIndex = remainingRegionsToConnect[i];
                     
-                    if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization : false)) {
+                    if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization : true)) {
                         effects.Add(effect);
                     }
                 }
