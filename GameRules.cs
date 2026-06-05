@@ -65,7 +65,8 @@ namespace LouveSystems.K2.Lib
                 public bool enragedWhenSurrounded; // true
                 public bool enragedWhenAttacked; // true
                 public byte hotPathLength; // 5
-
+                public bool calmBeastTileIsReserved; // false
+                public bool enragedBeastTileIsReserved; // true
 
                 public NavigationalPreferences navigationWhenCalm; // True to all
                 public NavigationalPreferences navigationWhenEnraged; // false to all
@@ -83,7 +84,9 @@ namespace LouveSystems.K2.Lib
                     into.Write(hotPathLength);
                     into.Write(navigationWhenCalm);
                     into.Write(navigationWhenEnraged);
-                    into.Write(beastCount);
+                    into.Write(beastCount); 
+                    into.Write(calmBeastTileIsReserved);
+                    into.Write(enragedBeastTileIsReserved);
                 }
 
                 public void Read(BinaryReader from)
@@ -99,6 +102,8 @@ namespace LouveSystems.K2.Lib
                     from.Read(ref navigationWhenEnraged);
 
                     beastCount = from.ReadByte();
+                    calmBeastTileIsReserved = from.ReadBoolean();
+                    enragedBeastTileIsReserved = from.ReadBoolean();
                 }
             }
 

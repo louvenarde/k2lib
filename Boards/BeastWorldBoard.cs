@@ -8,6 +8,7 @@ namespace LouveSystems.K2.Lib
 
     public struct BeastWorldBoard : IBoard
     {
+        const byte VERSION = 1;
         public struct SetEnragedBeastEffect : ITransformEffect
         {
             public byte beastIndex;
@@ -21,12 +22,15 @@ namespace LouveSystems.K2.Lib
 
                     if (enraged) {
                         beast.enragedTurnsRemaining = previous.rules.board.beastWorld.rageDuration;
+                        beast.hotPath.Clear();
                     }
                     else {
                         beast.enragedTurnsRemaining--;
+                        if (!beast.IsEnraged) {
+                            beast.hotPath.Clear();
+                        }
                     }
 
-                    beast.hotPath.Clear();
 
                     if (optionalAngerSource.HasValue) {
                         beast.hotPath.Enqueue(optionalAngerSource.Value);
@@ -43,6 +47,7 @@ namespace LouveSystems.K2.Lib
         public struct MoveBeastEffect : ITransformEffect
         {
             public byte beastIndex;
+            public int previousRegionIndex;
             public int newRegionIndex;
 
             public void Apply(in GameState previous, ref GameState next)
@@ -63,7 +68,7 @@ namespace LouveSystems.K2.Lib
             }
         }
 
-        public struct Beast
+        public struct Beast : IBinarySerializableWithVersion
         {
             public bool IsEnraged => enragedTurnsRemaining > 0;
 
@@ -77,12 +82,38 @@ namespace LouveSystems.K2.Lib
 
             public GameRules.GlobalBoardSettings.BeastWorldBoardSettings.NavigationalPreferences Navigation { private set; get; }
 
+            public Beast Duplicate()
+            {
+                return new Beast() {
+                    regionIndex = regionIndex,
+                    enragedTurnsRemaining = enragedTurnsRemaining,
+                    lastIdleMoveXTurnsAgo = lastIdleMoveXTurnsAgo,
+                    hotPath = new Queue<int>(hotPath)
+                };
+            }
+
             public void RefreshNavigation(in GameState state)
             {
                 Navigation =
                         IsEnraged ?
                          state.rules.board.beastWorld.navigationWhenEnraged :
                          state.rules.board.beastWorld.navigationWhenCalm;
+            }
+
+            public void Write(BinaryWriter into)
+            {
+                into.Write(regionIndex);
+                into.Write(enragedTurnsRemaining);
+                into.Write(lastIdleMoveXTurnsAgo);
+                into.WriteIntegers(hotPath.ToArray());
+            }
+
+            public void Read(byte version, BinaryReader from)
+            {
+                regionIndex = from.ReadInt32();
+                enragedTurnsRemaining = from.ReadByte();
+                lastIdleMoveXTurnsAgo = from.ReadByte();
+                hotPath = new Queue<int>(from.ReadIntegers());
             }
         }
 
@@ -147,7 +178,7 @@ namespace LouveSystems.K2.Lib
                    state.rules.board.beastWorld.movementsWhenEnraged :
                    state.rules.board.beastWorld.movementsWhenCalm;
 
-            state.world.GetNeighboringRegions(beastIndex, movements, predictedMoves);
+            state.world.GetNeighboringRegions(beasts[beastIndex].regionIndex, movements, predictedMoves);
 
             var hotPath = beasts[beastIndex].hotPath;
             predictedMoves.RemoveAll(hotPath.Contains);
@@ -285,7 +316,8 @@ namespace LouveSystems.K2.Lib
 
                     effect = new MoveBeastEffect() {
                         beastIndex = beastIndex,
-                        newRegionIndex = nextRegion
+                        newRegionIndex = nextRegion,
+                        previousRegionIndex = beast.regionIndex
                     };
 
                     return true;
@@ -301,18 +333,33 @@ namespace LouveSystems.K2.Lib
         public IBoard Duplicate()
         {
             return new BeastWorldBoard() {
-                beasts = beasts.ToArray()
+                beasts = beasts.Select(o=>o.Duplicate()).ToArray()
             };
         }
 
         public void Read(BinaryReader from)
         {
-
+            byte version = from.ReadByte();
+            from.Read(version, ref beasts);
         }
 
         public void Write(BinaryWriter into)
         {
+            into.Write(VERSION);
+            into.Write(beasts);
+        }
 
+        public bool IsAnyBeastOn(int regionIndex, out byte beastIndex)
+        {
+            for (byte i = 0; i < beasts.Length; i++) {
+                if (beasts[i].regionIndex == regionIndex) {
+                    beastIndex = i;
+                    return true;
+                }
+            }
+
+            beastIndex = default;
+            return false;
         }
 
         private static int SortForBeast(in Beast beast, in GameState state, int regionA, int regionB)
@@ -352,6 +399,24 @@ namespace LouveSystems.K2.Lib
 
             // Final comparison to avoid desyncs
             return 0;
+        }
+
+        public bool IsRegionReserved(in GameState state, int regionIndex)
+        {
+            if (state.board is BeastWorldBoard beastWorld) {
+                for (int i = 0; i < beastWorld.beasts.Length; i++) {
+                    if (beastWorld.beasts[i].regionIndex == regionIndex) {
+                        if (beastWorld.beasts[i].IsEnraged) {
+                            return state.rules.board.beastWorld.enragedBeastTileIsReserved;
+                        }
+                        else {
+                            return state.rules.board.beastWorld.calmBeastTileIsReserved;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

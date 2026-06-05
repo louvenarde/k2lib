@@ -10,6 +10,8 @@ namespace LouveSystems.K2.Lib
     {
         private const byte OPTIMAL_REALM_SIZE = 1;
 
+        public delegate bool CanRealmAttackRegionDelegate(byte realmIndex, int regionIndex);
+
         internal delegate void RegionStarvationDelegate(int regionIndex, byte? newOwner, byte? previousOwner);
         internal delegate void RegionConquestDelegate(int regionIndex, byte newOwner, byte? previousOwner);
         internal delegate void RegionBuiltDelegate(int regionIndex, EBuilding building);
@@ -651,49 +653,7 @@ namespace LouveSystems.K2.Lib
             return silver;
         }
 
-        public bool CanRealmAttackRegion(byte realmIndex, int regionIndex)
-        {
-            if (!IsValidRegionIndex(regionIndex)) {
-                return default;
-            }
-
-            if (!IsValidRealmIndex(realmIndex)) {
-                return default;
-            }
-
-            if (regions[regionIndex].inert) {
-                return false;
-            }
-
-            EFactionFlag attackerFaction = GetRealmFaction(realmIndex);
-            bool canSelfAttack = attackerFaction.HasFlagSafe(EFactionFlag.SelfAttack);
-
-            if (regions[regionIndex].IsOwnedBy(realmIndex) && !canSelfAttack) {
-                return false;
-            }
-
-            if (IsCouncilRegion(regionIndex)) {
-                return false;
-            }
-
-            if (regions[regionIndex].GetOwner(out byte regionOwner)) {
-                if (realms[regionOwner].IsSubjugated(out byte theirOwner)) {
-                    regionOwner = theirOwner;
-                }
-
-                if (realms[realmIndex].IsSubjugated(out byte myOwner)) {
-                    realmIndex = myOwner; // We're friends now
-                }
-
-                if (regionOwner == realmIndex && !canSelfAttack) {
-                    return false; 
-                }
-            }
-
-            return true;
-        }
-
-        public bool GetAttackTargetsForRegionNoAlloc(int regionIndex, ERegionAttackType allowedAttackTypes, in List<AttackTarget> attackTargets)
+        public bool GetAttackTargetsForRegionNoAlloc(int regionIndex, ERegionAttackType allowedAttackTypes, CanRealmAttackRegionDelegate canRealmAttackRegion, in List<AttackTarget> attackTargets)
         {
             if (!IsValidRegionIndex(regionIndex)) {
                 return default;
@@ -728,7 +688,7 @@ namespace LouveSystems.K2.Lib
                     int neighborIndex = Index(neighborPosition);
                     ERegionAttackType type = distance == 1 ? ERegionAttackType.Standard : ERegionAttackType.Charge;
 
-                    if (!CanRealmAttackRegion(regions[regionIndex].ownerIndex, neighborIndex)) {
+                    if (!canRealmAttackRegion(regions[regionIndex].ownerIndex, neighborIndex)) {
                         break;
                     }
 
@@ -744,7 +704,7 @@ namespace LouveSystems.K2.Lib
                 for (int i = 0; i < AxialSlitherAttackVectors.Count; i++) {
                     AxialPosition slitherTarget = pos + AxialSlitherAttackVectors[i];
                     int slitherTargetIndex = Index(slitherTarget.ToPosition());
-                    if (IsValidRegionIndex(slitherTargetIndex) && CanRealmAttackRegion(regions[regionIndex].ownerIndex, slitherTargetIndex)) {
+                    if (IsValidRegionIndex(slitherTargetIndex) && canRealmAttackRegion(regions[regionIndex].ownerIndex, slitherTargetIndex)) {
 
                         bool isValidSlither = false;
 
@@ -775,12 +735,6 @@ namespace LouveSystems.K2.Lib
             return attackTargets.Count > countBefore;
         }
 
-        public bool GetAttackTargetsForRegion(int regionIndex, ERegionAttackType allowedTypes, out List<AttackTarget> attackTargets)
-        {
-            attackTargets = new();
-
-            return GetAttackTargetsForRegionNoAlloc(regionIndex, allowedTypes, in attackTargets);
-        }
 
         public bool GetNaturalOwnerFromNeighbors(int regionIndex, ManagedRandom randomOptional, bool discardCurrentOwner, out byte newOwner, out bool wasCoinFlip, out bool isTotallySurrounded)
         {
@@ -1081,7 +1035,7 @@ namespace LouveSystems.K2.Lib
             depth--;
             if (depth > 0) {
                 for (int i = startIndex; i < count; i++) {
-                    GetNeighboringRegions(index, depth, in neighbors);
+                    GetNeighboringRegions(neighbors[i], depth, in neighbors);
                 }
             }
 
@@ -1090,8 +1044,8 @@ namespace LouveSystems.K2.Lib
             // Remove duplicates
             for (int i = startIndex; i < count; i++) {
                 int value = neighbors[i];
-                for (int j = i; j < count; j++) {
-                    if (neighbors[j] == value) {
+                for (int j = i+1; j < count; j++) {
+                    if (neighbors[j] == value) {    
                         neighbors.RemoveAt(j);
                         j--;
                         count--;
@@ -1356,12 +1310,12 @@ namespace LouveSystems.K2.Lib
             return position.x >= 0 && position.y >= 0 && position.x < SideLength && position.y < SideLength;
         }
 
-        private bool IsValidRealmIndex(byte index)
+        public bool IsValidRealmIndex(byte index)
         {
             return index >= 0 && index < realms.Length;
         }
 
-        private bool IsValidRegionIndex(int index)
+        public bool IsValidRegionIndex(int index)
         {
             return index >= 0 && index < regions.Length;
         }

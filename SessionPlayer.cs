@@ -265,13 +265,15 @@ namespace LouveSystems.K2.Lib
             return GetTreasury() >= silverPrice;
         }
 
-        public bool CanPlayWithRegion(int reginIndex)
+        public bool CanPlayWithRegion(int regionIndex)
         {
-            return gameSession.CurrentGameState.world.Regions[reginIndex].GetOwner(out byte regionOwner) &&
+            return
+                !gameSession.CurrentGameState.IsRegionReserved(regionIndex) && 
+                gameSession.CurrentGameState.world.Regions[regionIndex].GetOwner(out byte regionOwner) &&
                 CanControlRealm(regionOwner) &&
                 (
-                    !gameSession.HasRegionPlayed(reginIndex) ||
-                    gameSession.CurrentGameState.world.Regions[reginIndex].CanReplay(gameSession.Rules)
+                    !gameSession.HasRegionPlayed(regionIndex) ||
+                    gameSession.CurrentGameState.world.Regions[regionIndex].CanReplay(gameSession.Rules)
                 )
                 &&
                 CanPlay() &&

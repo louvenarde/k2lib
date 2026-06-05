@@ -4,18 +4,14 @@ namespace LouveSystems.K2.Lib
     using System.Collections.Generic;
     using System.IO;
 
-    public struct EmptyBoard : IBoard
+    public struct CouncilBoard : IBoard
     {
-        public EBoardType Type { get; }
+        public EBoardType Type => EBoardType.CouncilRegion;
 
-        public EmptyBoard(EBoardType type)
-        {
-            this.Type = type;
-        }
 
         public IBoard Duplicate()
         {
-            return new EmptyBoard(Type);
+            return new CouncilBoard();
         }
 
         public void ComputeEffects(ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
@@ -32,7 +28,7 @@ namespace LouveSystems.K2.Lib
 
         public bool IsRegionReserved(in GameState state, int regionIndex)
         {
-            return false;
+            return state.world.IsCouncilRegion(regionIndex);
         }
     }
 }

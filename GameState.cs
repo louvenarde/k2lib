@@ -50,6 +50,68 @@ namespace LouveSystems.K2.Lib
             SuscribeToStatisticsEvents();
         }
 
+        public bool IsRegionReserved(int regionIndex)
+        {
+            return board.IsRegionReserved(in this, regionIndex);
+        }
+
+
+
+        public bool CanRealmAttackRegion(byte realmIndex, int regionIndex)
+        {
+            if (!world.IsValidRegionIndex(regionIndex)) {
+                return default;
+            }
+
+            if (!world.IsValidRealmIndex(realmIndex)) {
+                return default;
+            }
+
+            if (world.Regions[regionIndex].inert) {
+                return false;
+            }
+
+            if (IsRegionReserved(regionIndex)) {
+                return false;
+            }
+
+            EFactionFlag attackerFaction = world.GetRealmFaction(realmIndex);
+            bool canSelfAttack = attackerFaction.HasFlagSafe(EFactionFlag.SelfAttack);
+
+            if (world.Regions[regionIndex].IsOwnedBy(realmIndex) && !canSelfAttack) {
+                return false;
+            }
+
+            if (world.Regions[regionIndex].GetOwner(out byte regionOwner)) {
+                if (world.Realms[regionOwner].IsSubjugated(out byte theirOwner)) {
+                    regionOwner = theirOwner;
+                }
+
+                if (world.Realms[realmIndex].IsSubjugated(out byte myOwner)) {
+                    realmIndex = myOwner; // We're friends now
+                }
+
+                if (regionOwner == realmIndex && !canSelfAttack) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public bool GetAttackTargetsForRegionNoAlloc(int regionIndex, ERegionAttackType allowedAttackTypes, in List<AttackTarget> attackTargets)
+        {
+            return world.GetAttackTargetsForRegionNoAlloc(regionIndex, allowedAttackTypes, CanRealmAttackRegion, in attackTargets);
+        }
+
+        public bool GetAttackTargetsForRegion(int regionIndex, ERegionAttackType allowedTypes, out List<AttackTarget> attackTargets)
+        {
+            attackTargets = new();
+
+            return GetAttackTargetsForRegionNoAlloc(regionIndex, allowedTypes, in attackTargets);
+        }
+
+
         private void SuscribeToStatisticsEvents()
         {
             world.OnSilverTreasuryGained += World_OnSilverTreasuryGained;
