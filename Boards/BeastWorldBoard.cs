@@ -13,6 +13,7 @@ namespace LouveSystems.K2.Lib
         {
             public byte beastIndex;
             public bool enraged;
+            public bool fromShockwave;
             public int? optionalAngerSource;
 
             public void Apply(in GameState previous, ref GameState next)
@@ -148,6 +149,7 @@ namespace LouveSystems.K2.Lib
             if (conquest.Success) {
 
                 if (state.board is BeastWorldBoard beastWorld) {
+                    bool enragedOne = false;
                     for (byte i = 0; i < beastWorld.beasts.Length; i++) {
 
                         if (beastWorld.beasts[i].regionIndex == conquest.regionIndex) {
@@ -156,6 +158,22 @@ namespace LouveSystems.K2.Lib
                                 beastIndex = i,
                                 enraged = true
                             });
+
+                            enragedOne |= state.rules.board.beastWorld.shockwaveAngerBeasts;
+                        }
+                    }
+
+                    // Add them afterwards
+                    if (enragedOne) {
+                        for (byte i = 0; i < beastWorld.beasts.Length; i++) {
+                            if (!beastWorld.beasts[i].IsEnraged && beastWorld.beasts[i].regionIndex != conquest.regionIndex) {
+                                effects.Add(new SetEnragedBeastEffect() {
+                                    optionalAngerSource = conquest.regionIndex,
+                                    beastIndex = i,
+                                    enraged = true,
+                                    fromShockwave = true
+                                });
+                            }
                         }
                     }
                 }
@@ -178,10 +196,14 @@ namespace LouveSystems.K2.Lib
                    state.rules.board.beastWorld.movementsWhenEnraged :
                    state.rules.board.beastWorld.movementsWhenCalm;
 
+            int startIndex = predictedMoves.Count;
             state.world.GetNeighboringRegions(beasts[beastIndex].regionIndex, movements, predictedMoves);
 
-            var hotPath = beasts[beastIndex].hotPath;
-            predictedMoves.RemoveAll(hotPath.Contains);
+            for (int i = predictedMoves.Count - 1; i >= startIndex; i--) {
+                if (!CanCrossRegion(beasts[beastIndex], predictedMoves[i], state)) {
+                    predictedMoves.RemoveAt(i);
+                }
+            }
         }
 
         private void ComputeBeastEffects(byte beastIndex, ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
@@ -269,20 +291,14 @@ namespace LouveSystems.K2.Lib
 
                 state.world.GetNeighboringRegions(beast.regionIndex, in neighboringRegionsCache);
 
-                if (beast.Navigation.hardHotPathAvoidance) {
-                    neighboringRegionsCache.RemoveAll(beast.hotPath.Contains);
-                }
+                // Avoid desyncs ?
+                neighboringRegionsCache.Sort();
 
-                if (beast.Navigation.hardTakenLandsAvoidance) {
-                    neighboringRegionsCache.RemoveAll(o => regions[o].isOwned && (!prefersFields || regions[o].Building != EBuilding.Fields));
-                }
-
-                {
-                    // Avoid overlapping
-                    neighboringRegionsCache.RemoveAll(o => beastWorld.beasts.Any(b => b.regionIndex == o));
-
-                    // Avoid capitalis
-                    neighboringRegionsCache.RemoveAll(o => regions[o].Building.HasFlagSafe(EBuilding.Capital));
+                // Remove forbidden regions
+                for (int i = neighboringRegionsCache.Count-1; i >= 0; i--) {
+                    if (!CanCrossRegion(beast, neighboringRegionsCache[i], state)) {
+                        neighboringRegionsCache.RemoveAt(i);
+                    }
                 }
 
                 if (neighboringRegionsCache.Count > 0)
@@ -328,6 +344,31 @@ namespace LouveSystems.K2.Lib
             }
 
             return false;
+        }
+
+        private bool CanCrossRegion(in Beast beast, int regionIndex, in GameState state)
+        {
+            if (beast.Navigation.hardHotPathAvoidance) {
+                if (beast.hotPath.Contains(regionIndex)) {
+                    return false;
+                }
+            }
+
+            if (beast.Navigation.hardTakenLandsAvoidance) {
+                if (state.world.Regions[regionIndex].isOwned && (!beast.Navigation.preferFields || state.world.Regions[regionIndex].Building != EBuilding.Fields)) {
+                    return false;
+                }
+            }
+
+            if (beasts.Any(b => b.regionIndex == regionIndex)) {
+                return false;
+            }
+
+            if (state.world.Regions[regionIndex].Building.HasFlagSafe(EBuilding.Capital)) {
+                return false;
+            }
+
+            return true;
         }
 
         public IBoard Duplicate()
@@ -397,7 +438,6 @@ namespace LouveSystems.K2.Lib
                 return comparator;
             }
 
-            // Final comparison to avoid desyncs
             return 0;
         }
 
