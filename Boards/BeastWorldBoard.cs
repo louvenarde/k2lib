@@ -458,8 +458,8 @@ namespace LouveSystems.K2.Lib
 
 
             // Avoid (or prefer) buildings
-            comparator = (state.world.Regions[regionA].RelevantBuilding != EBuilding.None)
-                .CompareTo((state.world.Regions[regionB].RelevantBuilding != EBuilding.None));
+            comparator = (state.world.Regions[regionA].RelevantBuilding != EBuilding.None && state.world.Regions[regionA].RelevantBuilding != EBuilding.Fields)
+                .CompareTo((state.world.Regions[regionB].RelevantBuilding != EBuilding.None && state.world.Regions[regionB].RelevantBuilding != EBuilding.Fields));
 
             if (comparator != 0) {
                 return beast.Navigation.avoidsNonFieldBuildings ? comparator : -comparator;
