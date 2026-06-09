@@ -24,6 +24,8 @@ namespace LouveSystems.K2.Lib
                     if (enraged) {
                         beast.enragedTurnsRemaining = previous.rules.board.beastWorld.rageDuration;
                         beast.hotPath.Clear();
+
+                        next.world.NeutralizeRegionFromHazard(beast.regionIndex);
                     }
                     else {
                         beast.enragedTurnsRemaining--;
@@ -187,7 +189,25 @@ namespace LouveSystems.K2.Lib
 
                     ComputeBeastEffects(i, random, in state, effects);
                 }
+
+                HashSet<byte> beastWillEnrage = new(beastWorld.beasts.Length);
+
+                // We group all "enraged" effects into one
+                for (int i = effects.Count - 1; i >= 0; i--) {
+                    if (effects[i] is SetEnragedBeastEffect enrage && enrage.enraged) {
+
+                        if (beastWillEnrage.Add(enrage.beastIndex)) {
+                            // OK, this is the last one
+                        }
+                        else {
+                            // this is an extra "howl" event, we want to remove it because it's useless
+                            effects.RemoveAt(i);
+                        }
+
+                    }
+                }
             }
+
         }
 
         public void GetPredictedMoves(byte beastIndex, in GameState state, in List<int> predictedMoves)
@@ -245,7 +265,7 @@ namespace LouveSystems.K2.Lib
 
                 for (int i = 0; i < movements; i++) {
 
-                    Logger.Debug($"Beast {beastIndex} computing movement {i+1} out of {movements}");
+                    Logger.Debug($"Beast {beastIndex} computing movement {i + 1} out of {movements}");
                     if (MoveBeast(beastIndex, random, prediction, out ITransformEffect effect)) {
                         // cool
                         Logger.Debug($"Beast {beastIndex} moved successfully to {(effect is MoveBeastEffect mb ? mb.newRegionIndex.ToString() : "??")}");
@@ -295,7 +315,7 @@ namespace LouveSystems.K2.Lib
                 neighboringRegionsCache.Sort();
 
                 // Remove forbidden regions
-                for (int i = neighboringRegionsCache.Count-1; i >= 0; i--) {
+                for (int i = neighboringRegionsCache.Count - 1; i >= 0; i--) {
                     if (!CanCrossRegion(beast, neighboringRegionsCache[i], state)) {
                         neighboringRegionsCache.RemoveAt(i);
                     }
@@ -310,8 +330,8 @@ namespace LouveSystems.K2.Lib
 
                     Logger.Debug($"Beast {beastIndex} options for movement (pre filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
 
-                    for (int i = 0; i < neighboringRegionsCache.Count-1; i++) {
-                        if (SortForBeast(in beast, in state, neighboringRegionsCache[i], neighboringRegionsCache[i+1]) != 0) {
+                    for (int i = 0; i < neighboringRegionsCache.Count - 1; i++) {
+                        if (SortForBeast(in beast, in state, neighboringRegionsCache[i], neighboringRegionsCache[i + 1]) != 0) {
                             neighboringRegionsCache.RemoveRange(i + 1, neighboringRegionsCache.Count - (i + 1));
                             break;
                         }
@@ -319,12 +339,27 @@ namespace LouveSystems.K2.Lib
 
                     Logger.Debug($"Beast {beastIndex} options for movement (post filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
 
-
                     int nextRegion = neighboringRegionsCache[0];
-                    
+
                     if (neighboringRegionsCache.Count > 1) {
-                        neighboringRegionsCache.Sort(); // Avoid desync by sorting by index
-                        nextRegion = neighboringRegionsCache[random.Next(neighboringRegionsCache.Count - 1)];
+
+                        Position centralPosition = s.world.Position(s.world.Regions.Count / 2);
+                        // Sort by distance - always go towards center
+                        neighboringRegionsCache.Sort((a,b) => s.world.Position(a).SquaredDistanceWith(centralPosition).CompareTo(s.world.Position(b).SquaredDistanceWith(centralPosition)));
+
+                        for (int i = neighboringRegionsCache.Count - 1; i >= 0; i--) {
+                            if (s.world.Position(neighboringRegionsCache[0]).SquaredDistanceWith(centralPosition) <
+                                s.world.Position(neighboringRegionsCache[i]).SquaredDistanceWith(centralPosition)) {
+                                neighboringRegionsCache.RemoveAt(i);
+                            }
+                        }
+
+                        Logger.Debug($"Beast {beastIndex} options for movement (kept only closest):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
+
+                        nextRegion = neighboringRegionsCache[0];
+                        if (neighboringRegionsCache.Count > 1) {
+                            nextRegion = neighboringRegionsCache[random.Next(neighboringRegionsCache.Count - 1)];
+                        }
                     }
 
 
@@ -374,7 +409,7 @@ namespace LouveSystems.K2.Lib
         public IBoard Duplicate()
         {
             return new BeastWorldBoard() {
-                beasts = beasts.Select(o=>o.Duplicate()).ToArray()
+                beasts = beasts.Select(o => o.Duplicate()).ToArray()
             };
         }
 

@@ -378,24 +378,33 @@ namespace LouveSystems.K2.Lib
             GameState borderGoreComputationDuplicate = Duplicate();
             ApplyEffects(effectsList, ref borderGoreComputationDuplicate);
 
-            // From realms
-            byte depth = 0;
-            while (true) {
-                borderGoreComputationDuplicate.ResolveRealmsBorderGore(in borderGoreComputationDuplicate.world, random, out ITransformEffect[] effects, depth);
-                
-                if (effects.Length > 0) {
-                    ApplyEffects(effects, ref borderGoreComputationDuplicate);
-                    effectsList.AddRange(effects);
-                    depth++;
-                    continue;
-                }
+            void resolveRealmsBorderGore(in GameState state, in List<ITransformEffect> effectsList, bool allowNeutralization)
+            {
+                byte depth = 0;
+                while (true) {
+                    borderGoreComputationDuplicate.ResolveRealmsBorderGore(in borderGoreComputationDuplicate.world, random, out ITransformEffect[] effects, depth, allowNeutralization: allowNeutralization);
 
-                break;
+                    if (effects.Length > 0) {
+                        state.ApplyEffects(effects, ref borderGoreComputationDuplicate);
+                        effectsList.AddRange(effects);
+                        depth++;
+                        continue;
+                    }
+
+                    break;
+                }
             }
 
-            // From Neutral
+            // From conquest ( neutralization not allowed )
+            resolveRealmsBorderGore(in this, in effectsList, allowNeutralization: false);
+
+            // From hazard ( neutralization allowed )
+            resolveRealmsBorderGore(in this, in effectsList, allowNeutralization: true);
+
+            // Neutral regions can starve if they're no longer connected to the edge of the board
+            // This is a "go-take" and they usually go to somebody near
             if (rules.neutralRegionStarvation) {
-                depth = 0;
+                byte depth = 0;
                 while (true) {
                     borderGoreComputationDuplicate.ResolveNeutralBorderGore(in borderGoreComputationDuplicate.world, out ITransformEffect[] effects, depth);
 
@@ -502,7 +511,7 @@ namespace LouveSystems.K2.Lib
             effects = effectsToAdd.ToArray();
         }
 
-        private void ResolveRealmsBorderGore(in World world, ManagedRandom random, out ITransformEffect[] effects, byte depth)
+        private void ResolveRealmsBorderGore(in World world, ManagedRandom random, out ITransformEffect[] effects, byte depth, bool allowNeutralization)
         {
             List<ITransformEffect> effectsToAdd = new List<ITransformEffect>();
 
@@ -511,13 +520,13 @@ namespace LouveSystems.K2.Lib
                     continue;
                 }
 
-                SolveBorderGoreForRealm(world, random, i, effectsToAdd, depth);
+                SolveBorderGoreForRealm(world, random, i, effectsToAdd, depth, allowNeutralization);
             }
 
             effects = effectsToAdd.OrderBy(o => o is ITransformEffect.ConquestEffect conquest && conquest.isACoinFlip).ToArray();
         }
 
-        private void SolveBorderGoreForRealm(in World world,  ManagedRandom random, byte realm, in List<ITransformEffect> effects, byte depth)
+        private void SolveBorderGoreForRealm(in World world,  ManagedRandom random, byte realm, in List<ITransformEffect> effects, byte depth, bool allowNeutralization)
         {
             List<int> remainingRegionsToConnect = new List<int>();
             world.GetTerritoryOfRealm(realm, remainingRegionsToConnect);
@@ -600,7 +609,7 @@ namespace LouveSystems.K2.Lib
                 for (int i = 0; i < remainingRegionsToConnect.Count; i++) {
                     int regionIndex = remainingRegionsToConnect[i];
                     
-                    if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization : true)) {
+                    if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization)) {
                         effects.Add(effect);
                     }
                 }
