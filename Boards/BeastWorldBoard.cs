@@ -358,6 +358,7 @@ namespace LouveSystems.K2.Lib
 
                         nextRegion = neighboringRegionsCache[0];
                         if (neighboringRegionsCache.Count > 1) {
+                            neighboringRegionsCache.Sort();
                             nextRegion = neighboringRegionsCache[random.Next(neighboringRegionsCache.Count - 1)];
                         }
                     }
