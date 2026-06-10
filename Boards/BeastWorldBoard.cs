@@ -128,15 +128,20 @@ namespace LouveSystems.K2.Lib
 
         public BeastWorldBoard(GameRules.GlobalBoardSettings.BeastWorldBoardSettings boardSettings, in World world) : this()
         {
-            beasts = new Beast[boardSettings.beastCount];
+            beasts = new Beast[System.Math.Min(boardSettings.beastCount, (byte)6)];
 
             if (beasts.Length == 1) {
                 beasts[0].regionIndex = world.Regions.Count / 2;
             }
             else {
-                for (int i = 0; i < beasts.Length; i++) {
-                    // TODO
-                    beasts[i].regionIndex = (world.Regions.Count / beasts.Length) * i + (world.Regions.Count / beasts.Length) / 2;
+                var centralNeighbors = new List<int>();
+                world.GetNeighboringRegions(world.Regions.Count / 2, centralNeighbors);
+                for (byte i = 0; i < beasts.Length; i++) {
+
+                    int neighborIndex = (centralNeighbors.Count / beasts.Length) * i;
+
+                    // The min() here is useless but it helps me sleep
+                    beasts[i].regionIndex = centralNeighbors[System.Math.Min(neighborIndex, centralNeighbors.Count-1)];
                 }
             }
 
