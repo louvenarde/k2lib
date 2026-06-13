@@ -2,6 +2,7 @@
 namespace LouveSystems.K2.Lib
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
 
     public struct Position : IBinarySerializableWithVersion
@@ -30,6 +31,11 @@ namespace LouveSystems.K2.Lib
         public override int GetHashCode()
         {
             return HashCode.Combine(x, y);
+        }
+
+        public int DistanceWith(in Position other)
+        {
+            return SquaredDistanceWith(in other).IntegerSqrt();
         }
 
         public int SquaredDistanceWith(in Position other)

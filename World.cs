@@ -1226,7 +1226,7 @@ namespace LouveSystems.K2.Lib
                     gravityCenter /= positionsToAvoid.Count;
                 }
 
-                Position pos = positionsLeftToSort.OrderByDescending((o) => o.SquaredDistanceWith(gravityCenter)).First();
+                Position pos = positionsLeftToSort.OrderByDescending((o) => o.DistanceWith(gravityCenter)).First();
 
                 bool removed = positionsLeftToSort.Remove(pos);
                 newPositions.Add(pos);

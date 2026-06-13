@@ -167,6 +167,27 @@ namespace LouveSystems.K2.Lib
             return hash;
         }
 
+        // 100 first integers
+        private static readonly IReadOnlyList<int> sqrtLookupTable = new int[] { 0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 };
+
+        public static int IntegerSqrt(this int number)
+        {
+            if (sqrtLookupTable.Count > number) {
+                return sqrtLookupTable[number];
+            }
+
+            // start iteration from 1 until the 
+            // square of a number exceeds n
+            int root = 1;
+            while (root * root <= number) {
+                root++;
+            }
+
+            // return the largest integer whose 
+            // square is less than or equal to n
+            return root - 1;
+        }
+
         public static void AddRange<T>(this ICollection<T> collection, IReadOnlyCollection<T> toAdd)
         {
             foreach(var elem in toAdd) {

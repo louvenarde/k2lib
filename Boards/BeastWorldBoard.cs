@@ -350,11 +350,11 @@ namespace LouveSystems.K2.Lib
 
                         Position centralPosition = s.world.Position(s.world.Regions.Count / 2);
                         // Sort by distance - always go towards center
-                        neighboringRegionsCache.Sort((a,b) => s.world.Position(a).SquaredDistanceWith(centralPosition).CompareTo(s.world.Position(b).SquaredDistanceWith(centralPosition)));
+                        neighboringRegionsCache.Sort((a,b) => s.world.Position(a).DistanceWith(centralPosition).CompareTo(s.world.Position(b).DistanceWith(centralPosition)));
 
                         for (int i = neighboringRegionsCache.Count - 1; i >= 0; i--) {
-                            if (s.world.Position(neighboringRegionsCache[0]).SquaredDistanceWith(centralPosition) <
-                                s.world.Position(neighboringRegionsCache[i]).SquaredDistanceWith(centralPosition)) {
+                            if (s.world.Position(neighboringRegionsCache[0]).DistanceWith(centralPosition) <
+                                s.world.Position(neighboringRegionsCache[i]).DistanceWith(centralPosition)) {
                                 neighboringRegionsCache.RemoveAt(i);
                             }
                         }
