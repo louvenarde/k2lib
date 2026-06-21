@@ -91,31 +91,20 @@ namespace LouveSystems.K2.Lib
 
         public struct ConstructionEffect : ITransformEffect
         {
-            public bool IsFactionFeat => isFactionHighlight;
+            public bool IsFactionFeat => isFactionHighlight && isSuccessful;
 
             public int regionIndex;
             public EBuilding building;
             public byte forOwner;
             public int silverPricePaid;
             public bool isFactionHighlight;
-
-            public bool WasSuccessful(in GameState currentGameState)
-            {
-                return currentGameState.world.IsActionableRegion(forOwner, regionIndex);
-            }
+            public bool isSuccessful;
 
             public void Apply(in GameState previous, ref GameState next)
             {
                 // ownership check
-                if (!next.world.Regions[regionIndex].isOwned) {
+                if (!isSuccessful) {
                     return;
-                }
-
-                byte targetOwner = forOwner;
-                {
-                    if (next.world.Realms[targetOwner].IsSubjugated(out byte subjugator)) {
-                        targetOwner = subjugator;
-                    }
                 }
 
                 byte regionOwner = next.world.Regions[regionIndex].ownerIndex;
@@ -125,15 +114,8 @@ namespace LouveSystems.K2.Lib
                     }
                 }
 
-                if (targetOwner != regionOwner) {
-                    return;
-                }
-
-                if (next.world.IsActionableRegion(forOwner, regionIndex)) {
-
-                    next.world.ConstructBuilding(regionIndex, building, silverPricePaid);
-                    next.world.AddSilverTreasury(regionOwner, -silverPricePaid);
-                }
+                next.world.ConstructBuilding(regionIndex, building, silverPricePaid);
+                next.world.AddSilverTreasury(regionOwner, -silverPricePaid);
             }
 
             public byte GetOwnerFactionIndex(in GameState state)
