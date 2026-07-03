@@ -390,7 +390,7 @@ namespace LouveSystems.K2.Lib
         public void WasteAction()
         {
             if (AnyDecisionsRemaining()) {
-                Act(new DoNothingTransform());
+                Act(new DoNothingTransform(RealmIndex));
             }
             else {
                 Logger.Warn($"Cannot {nameof(WasteAction)} for {RealmIndex} - no action remaining!");
