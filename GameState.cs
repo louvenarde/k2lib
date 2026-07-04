@@ -313,11 +313,17 @@ namespace LouveSystems.K2.Lib
             {
                 var constructions = TakeConstructions(world, remainingTransforms);
 
-                PlayConstructions(in world, constructions, effectsList);
+                GameState constructionsDuplicate = Duplicate();
+                ApplyEffects(effectsList, ref constructionsDuplicate);
+                PlayConstructions(in constructionsDuplicate.world, constructions, effectsList);
             }
 
             // Environmental turn
-            board.ComputeEffects(random, in this, in effectsList);
+            {
+                GameState boardDuplicate = Duplicate();
+                ApplyEffects(effectsList, ref boardDuplicate);
+                board.ComputeEffects(random, in boardDuplicate, in effectsList);
+            }
 
             // Resolve border gore again in case the board has modified ownership of some parts
             ResolveBorderGore(random, in effectsList);

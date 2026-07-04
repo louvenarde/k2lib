@@ -14,7 +14,7 @@ namespace LouveSystems.K2.Lib
             public byte beastIndex;
             public bool enraged;
             public bool fromShockwave;
-            public int? optionalAngerSource;
+            public int[] optionalAngerSources;
 
             public void Apply(in GameState previous, ref GameState next)
             {
@@ -35,12 +35,14 @@ namespace LouveSystems.K2.Lib
                     }
 
 
-                    if (optionalAngerSource.HasValue) {
-                        beast.hotPath.Enqueue(optionalAngerSource.Value);
+                    if (optionalAngerSources != null && !fromShockwave) {
+                        for (int i = 0; i < optionalAngerSources.Length; i++) {
+                            beast.hotPath.Enqueue(optionalAngerSources[i]);
 
 
-                        if (next.world.Regions[optionalAngerSource.Value].GetOwner(out byte realmIndex)) {
-                            next.world.NotifyBeastAttacked(realmIndex);
+                            if (next.world.Regions[optionalAngerSources[i]].GetOwner(out byte realmIndex)) {
+                                next.world.NotifyBeastAttacked(realmIndex);
+                            }
                         }
                     }
                 }
@@ -160,11 +162,13 @@ namespace LouveSystems.K2.Lib
                     for (byte i = 0; i < beastWorld.beasts.Length; i++) {
 
                         if (beastWorld.beasts[i].regionIndex == conquest.regionIndex) {
-                            effects.Add(new SetEnragedBeastEffect() {
-                                optionalAngerSource = conquest.regionIndex,
-                                beastIndex = i,
-                                enraged = true
-                            });
+                            if (conquest.attackingRegionsIndices != null) {
+                                effects.Add(new SetEnragedBeastEffect() {
+                                    optionalAngerSources = conquest.attackingRegionsIndices,
+                                    beastIndex = i,
+                                    enraged = true
+                                });
+                            }
 
                             enragedOne |= state.rules.board.beastWorld.shockwaveAngerBeasts;
                         }
@@ -175,7 +179,7 @@ namespace LouveSystems.K2.Lib
                         for (byte i = 0; i < beastWorld.beasts.Length; i++) {
                             if (!beastWorld.beasts[i].IsEnraged && beastWorld.beasts[i].regionIndex != conquest.regionIndex) {
                                 effects.Add(new SetEnragedBeastEffect() {
-                                    optionalAngerSource = conquest.regionIndex,
+                                    optionalAngerSources = new int[] { conquest.regionIndex },
                                     beastIndex = i,
                                     enraged = true,
                                     fromShockwave = true
@@ -190,9 +194,16 @@ namespace LouveSystems.K2.Lib
         public void ComputeEffects(ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
         {
             if (state.board is BeastWorldBoard beastWorld) {
-                for (byte i = 0; i < beastWorld.beasts.Length; i++) {
 
-                    ComputeBeastEffects(i, random, in state, effects);
+                {
+                    List<ITransformEffect> newEffects = new List<ITransformEffect>();
+
+                    for (byte i = 0; i < beastWorld.beasts.Length; i++) {
+
+                        ComputeBeastEffects(i, random, in state, newEffects);
+                    }
+
+                    effects.AddRange(newEffects);
                 }
 
                 HashSet<byte> beastWillEnrage = new(beastWorld.beasts.Length);

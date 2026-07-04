@@ -286,9 +286,9 @@ namespace LouveSystems.K2.Lib
             this.realms[realmIndex].beastsAttacked = 0;
         }
 
-        public void NotifyBeastAttacked(byte realmIndex)
+        public void NotifyBeastAttacked(byte realmIndex, byte attackCount = 1)
         {
-            this.realms[realmIndex].beastsAttacked++;
+            this.realms[realmIndex].beastsAttacked += attackCount;
         }
 
         public void CancelPartialSubjugation(byte attackingRealmIndex, byte targetRealmIndex)
@@ -544,15 +544,8 @@ namespace LouveSystems.K2.Lib
 
             return
                 // Personal ownership
-                Regions[regionIndex].IsOwnedBy(realmIndex) ||
-                
-                // Property of their subjugator
-                Realms[realmIndex].IsSubjugated(out byte subjugator) && Regions[regionIndex].IsOwnedBy(subjugator) ||
-
-                // Subjugated property
-                Regions[regionIndex].isOwned && 
-                Realms[Regions[regionIndex].ownerIndex].isSubjugated &&
-                Realms[Regions[regionIndex].ownerIndex].subjugatedBy == realmIndex;
+                Regions[regionIndex].GetOwner(out byte ownerIndex) &&
+                IsRealmAlliedWith(ownerIndex, realmIndex);
         }
 
         public EFactionFlag GetRealmFaction(byte realmIndex)
