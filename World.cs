@@ -522,6 +522,10 @@ namespace LouveSystems.K2.Lib
 
         public bool IsRealmAlliedWith(byte realmIndex, byte otherRealm)
         {
+            if (realmIndex == otherRealm) {
+                return true;
+            }
+
             realmPoolBuffer.Clear();
             GetAllianceRealms(realmIndex, realmPoolBuffer);
             if (realmPoolBuffer.Contains(otherRealm))

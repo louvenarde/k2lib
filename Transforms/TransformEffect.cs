@@ -108,13 +108,17 @@ namespace LouveSystems.K2.Lib
                 }
 
                 byte regionOwner = next.world.Regions[regionIndex].ownerIndex;
-                {
-                    if (next.world.Realms[regionOwner].IsSubjugated(out byte subjugator)) {
-                        regionOwner = subjugator;
-                    }
+
+                if (next.world.IsRealmAlliedWith(regionOwner, forOwner)) {
+                    // Building can only be constructed if you actually own the region at the end of the turn
+                    next.world.ConstructBuilding(regionIndex, building, silverPricePaid);
                 }
 
-                next.world.ConstructBuilding(regionIndex, building, silverPricePaid);
+                if (next.world.Realms[regionOwner].IsSubjugated(out byte subjugator)) {
+                    regionOwner = subjugator;
+                }
+
+                // But you pay regardless of the building's construction
                 next.world.AddSilverTreasury(regionOwner, -silverPricePaid);
             }
 
