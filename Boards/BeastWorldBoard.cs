@@ -194,7 +194,6 @@ namespace LouveSystems.K2.Lib
         public void ComputeEffects(ManagedRandom random, in GameState state, in List<ITransformEffect> effects)
         {
             if (state.board is BeastWorldBoard beastWorld) {
-
                 {
                     List<ITransformEffect> newEffects = new List<ITransformEffect>();
 
@@ -251,7 +250,9 @@ namespace LouveSystems.K2.Lib
 
         private void ComputeBeastRage(byte beastIndex, in GameState state, in List<ITransformEffect> effects)
         {
-            if (state.board is BeastWorldBoard beastWorld) {
+            GameState prediction = state.Duplicate();
+            state.ApplyEffects(effects, ref prediction);
+            if (prediction.board is BeastWorldBoard beastWorld) {
                 if (beastWorld.beasts[beastIndex].IsEnraged) {
                     effects.Add(new SetEnragedBeastEffect() {
                         beastIndex = beastIndex,
@@ -344,7 +345,7 @@ namespace LouveSystems.K2.Lib
                     GameState s = state;
                     neighboringRegionsCache.Sort((a, b) => SortForBeast(bull, s, a, b));
 
-                    Logger.Debug($"Beast {beastIndex} options for movement (pre filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
+                    Logger.Debug($"Beast {beastIndex} options for movement (pre filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => $"{o}=>{regions[o]}"))}");
 
                     for (int i = 0; i < neighboringRegionsCache.Count - 1; i++) {
                         if (SortForBeast(in beast, in state, neighboringRegionsCache[i], neighboringRegionsCache[i + 1]) != 0) {
@@ -353,7 +354,7 @@ namespace LouveSystems.K2.Lib
                         }
                     }
 
-                    Logger.Debug($"Beast {beastIndex} options for movement (post filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
+                    Logger.Debug($"Beast {beastIndex} options for movement (post filtering):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => $"{o}=>{regions[o]}"))}");
 
                     int nextRegion = neighboringRegionsCache[0];
 
@@ -370,7 +371,7 @@ namespace LouveSystems.K2.Lib
                             }
                         }
 
-                        Logger.Debug($"Beast {beastIndex} options for movement (kept only closest):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => regions[o]))}");
+                        Logger.Debug($"Beast {beastIndex} options for movement (kept only closest):\n - {string.Join("\n - ", neighboringRegionsCache.Select(o => $"{o}=>{regions[o]}"))}");
 
                         nextRegion = neighboringRegionsCache[0];
                         if (neighboringRegionsCache.Count > 1) {
@@ -412,7 +413,7 @@ namespace LouveSystems.K2.Lib
                 }
             }
 
-            if (beasts.Any(b => b.regionIndex == regionIndex)) {
+            if (state.board is BeastWorldBoard board && board.beasts.Any(b => b.regionIndex == regionIndex)) {
                 return false;
             }
 
