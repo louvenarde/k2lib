@@ -92,8 +92,6 @@ namespace LouveSystems.K2.Lib
 
         private Realm[] realms;
 
-        private Position[] startingPositions;
-
         private byte sideLength;
 
         private byte squareSideLength;
@@ -113,7 +111,7 @@ namespace LouveSystems.K2.Lib
 
             sideLength = CalculateSideLength(
                 parameters,
-                realmCountWithoutCouncil, 
+                realmCountWithoutCouncil,
                 out squareSideLength
             );
 
@@ -157,14 +155,49 @@ namespace LouveSystems.K2.Lib
                 }
             }
 
-            startingPositions = positions;
+            Lib.Position[] startingPositions = positions;
 
-            for (byte i = 0; i < realms.Length; i++) {
-                if (i == realms.Length - 1 && hasCouncilRealm) {
-                    councilRealmIndex = i;
-                    InitializeCouncilRealm(i, startingPositions[^1]);
+            byte realmsToPosition = (byte)realms.Length;
+            if (hasCouncilRealm) {
+                byte i = (byte)(realms.Length - 1);
+                councilRealmIndex = i;
+                InitializeCouncilRealm(i, startingPositions[^1]);
+                realmsToPosition--;
+            }
+
+            bool teamBased = playerParams.realmsToInitialize.Any(o => o.initialSubjugatorPlayerId.HasValue);
+            if (teamBased) {
+                // Spawn teammates close to each other
+                Dictionary<byte, int> teamSizes = new();
+                for (byte i = 0; i < playerParams.realmsToInitialize.Length; i++) {
+                    int teamSize = 1;
+
+                    for (byte j = 0; j < playerParams.realmsToInitialize.Length; j++) {
+                        if (j == i) {
+                            continue;
+                        }
+
+                        if (playerParams.realmsToInitialize[j].initialSubjugatorPlayerId == playerParams.realmsToInitialize[i].forPlayerId) {
+                            teamSize++;
+                        }
+                    }
+
+                    teamSizes[i] = teamSize;
                 }
-                else {
+
+                byte[] orderedRealmsIndicesToSpawn = 
+                    Enumerable.Range(0, realmsToPosition)
+                    .Select(o=>(byte)o)
+                    .OrderBy(o=>teamSizes[o])
+                    .ToArray();
+
+
+                for (byte i = 0; i < orderedRealmsIndicesToSpawn.Length; i++) {
+                    InitializeRealm(orderedRealmsIndicesToSpawn[i], startingPositions[i], rules.initialRealmsSize);
+                }
+            }
+            else {
+                for (byte i = 0; i < realmsToPosition; i++) {
                     InitializeRealm(i, startingPositions[i], rules.initialRealmsSize);
                 }
             }
@@ -178,7 +211,6 @@ namespace LouveSystems.K2.Lib
             realms = new Realm[other.realms.Length];
             other.realms.CopyTo(realms, 0);
 
-            startingPositions = other.startingPositions;
             rules = other.rules;
 
             sideLength = other.sideLength;
@@ -238,7 +270,7 @@ namespace LouveSystems.K2.Lib
 
             OnRegionStarved?.Invoke(
                 regionIndex,
-                hasNewOwner ? newOwningRealm : default, 
+                hasNewOwner ? newOwningRealm : default,
                 hadOwner ? previousOwner : default
             );
         }
@@ -373,7 +405,7 @@ namespace LouveSystems.K2.Lib
             List<byte> independentRealms = new List<byte>(realms.Length);
             realmIndex = default;
             for (byte i = 0; i < realms.Length; i++) {
-                
+
                 if (IsCouncilRealm(i)) {
                     continue;
                 }
@@ -402,7 +434,7 @@ namespace LouveSystems.K2.Lib
             return false;
         }
 
-        public void IncreaseMaxDecisions(byte realmIndex, int byAmount=1)
+        public void IncreaseMaxDecisions(byte realmIndex, int byAmount = 1)
         {
             realms[realmIndex].availableDecisions = realms[realmIndex].availableDecisions + byAmount;
         }
@@ -410,7 +442,7 @@ namespace LouveSystems.K2.Lib
         public void AddSilverTreasury(byte realmIndex, int amount)
         {
             int treasury = GetSilverTreasury(realmIndex);
-            SetSilverTreasury(realmIndex, treasury+ amount);
+            SetSilverTreasury(realmIndex, treasury + amount);
         }
 
         public void SetSilverTreasury(byte realmIndex, int treasury)
@@ -425,7 +457,7 @@ namespace LouveSystems.K2.Lib
             }
 
             // Statistics
-             {
+            {
                 int delta = realms[target].silverTreasury - treasury;
 
                 if (delta < 0) {
@@ -472,12 +504,13 @@ namespace LouveSystems.K2.Lib
         }
 
         public bool IsCouncilRegion(int regionIndex) => councilRealmIndex.HasValue
-            && IsValidRegionIndex(regionIndex) 
+            && IsValidRegionIndex(regionIndex)
             && this.regions[regionIndex].IsOwnedBy(councilRealmIndex.Value);
 
         public bool IsCouncilRealm(byte realmIndex) => councilRealmIndex == realmIndex;
 
-        public bool IsRealmExcludedFromVoting(byte realmIndex) {
+        public bool IsRealmExcludedFromVoting(byte realmIndex)
+        {
             if (!IsValidRealmIndex(realmIndex)) {
                 return default;
             }
@@ -487,24 +520,21 @@ namespace LouveSystems.K2.Lib
 
         public bool CanSeePlannedAttacksOf(byte realmIndex, byte otherRealm)
         {
-            if (realmIndex == otherRealm)
-            {
+            if (realmIndex == otherRealm) {
                 return true;
             }
 
-            if (IsRealmAlliedWith(realmIndex, otherRealm))
-            {
+            if (IsRealmAlliedWith(realmIndex, otherRealm)) {
                 return true;
             }
 
             return false;
         }
 
-        
+
         public bool CanSeePlannedConstructionsOf(byte realmIndex, byte otherRealm)
         {
-            if (realmIndex == otherRealm)
-            {
+            if (realmIndex == otherRealm) {
                 return true;
             }
 
@@ -512,8 +542,7 @@ namespace LouveSystems.K2.Lib
                 return true;
             }
 
-            if (IsRealmAlliedWith(realmIndex, otherRealm))
-            {
+            if (IsRealmAlliedWith(realmIndex, otherRealm)) {
                 return true;
             }
 
@@ -528,8 +557,7 @@ namespace LouveSystems.K2.Lib
 
             realmPoolBuffer.Clear();
             GetAllianceRealms(realmIndex, realmPoolBuffer);
-            if (realmPoolBuffer.Contains(otherRealm))
-            {
+            if (realmPoolBuffer.Contains(otherRealm)) {
                 return true;
             }
 
@@ -631,7 +659,7 @@ namespace LouveSystems.K2.Lib
                 silver = rules.silverLootedOnCapital;
             }
             else {
-                silver =GetRegionSilverWorth(regionIndex);
+                silver = GetRegionSilverWorth(regionIndex);
             }
 
             if (lootingRealmFaction.HasFlagSafe(EFactionFlag.LootMoreMoney)) {
@@ -646,7 +674,7 @@ namespace LouveSystems.K2.Lib
 
                 }
             }
-         
+
             return silver;
         }
 
@@ -665,7 +693,7 @@ namespace LouveSystems.K2.Lib
 
             EFactionFlag attackingFaction = GetRegionFaction(regionIndex);
 
-            if (allowedAttackTypes.HasFlagSafe(ERegionAttackType.Charge) && 
+            if (allowedAttackTypes.HasFlagSafe(ERegionAttackType.Charge) &&
                 attackingFaction.HasFlagSafe(EFactionFlag.Charge)) {
                 range = 2;
             }
@@ -693,7 +721,7 @@ namespace LouveSystems.K2.Lib
                 }
             }
 
-            if (allowedAttackTypes.HasFlagSafe(ERegionAttackType.Slithering) && 
+            if (allowedAttackTypes.HasFlagSafe(ERegionAttackType.Slithering) &&
                 attackingFaction.HasFlagSafe(EFactionFlag.SlitherAttacksBetweenRegions)) {
 
                 AxialPosition pos = new AxialPosition(Position(regionIndex));
@@ -713,7 +741,7 @@ namespace LouveSystems.K2.Lib
                             int neighborRegionIndex = commonNeighbors[commonNeighborIndex];
 
                             // Only allow slithering if there's an enemy fort between origin and destination
-                            if (!regions[neighborRegionIndex].IsOwnedBy(regions[regionIndex].ownerIndex) 
+                            if (!regions[neighborRegionIndex].IsOwnedBy(regions[regionIndex].ownerIndex)
                                 && regions[neighborRegionIndex].RelevantBuilding != EBuilding.None
                                 && !IsCouncilRegion(neighborRegionIndex)
                             ) {
@@ -809,7 +837,7 @@ namespace LouveSystems.K2.Lib
             return potentialOwners.Count > 0;
         }
 
-        public void GetTerritoryOfRealm(byte realmIndex, in List<int> regions, Predicate<Region> filter, bool includeSubjugated=false)
+        public void GetTerritoryOfRealm(byte realmIndex, in List<int> regions, Predicate<Region> filter, bool includeSubjugated = false)
         {
             GetTerritoryOfRealm(realmIndex, regions);
 
@@ -873,22 +901,18 @@ namespace LouveSystems.K2.Lib
 
                 bool isAllied = false;
                 if (realms[i].IsSubjugated(out byte subjugator)) {
-                    if (subjugator == realmIndex)
-                    {
+                    if (subjugator == realmIndex) {
                         isAllied = true;
                     }
-                    else if (isSubjugated && myRuler == subjugator)
-                    {
+                    else if (isSubjugated && myRuler == subjugator) {
                         isAllied = true;
                     }
                 }
-                else if (isSubjugated && myRuler == realmIndex)
-                {
+                else if (isSubjugated && myRuler == realmIndex) {
                     isAllied = true;
                 }
 
-                if (isAllied)
-                {
+                if (isAllied) {
                     if (!realmPool.Contains(i)) {
                         realmPool.Add(i);
                     }
@@ -934,12 +958,10 @@ namespace LouveSystems.K2.Lib
 
         public void GetAllConnectedRegionsPreventingStarvation(int startingPoint, in ICollection<int> regionIndices)
         {
-            if (rules.alliedRegionsPreventStarvation)
-            {
+            if (rules.alliedRegionsPreventStarvation) {
                 GetAllConnectedRegionsOfSameAlliance(startingPoint, regionIndices);
             }
-            else
-            {
+            else {
                 GetAllConnectedRegionsOfSameOwner(startingPoint, regionIndices);
             }
         }
@@ -960,7 +982,7 @@ namespace LouveSystems.K2.Lib
                 return lambdaCopy.IsRealmAlliedWith(a, b);
             }
 
-            GetAllConnectedRegions(startingPoint, regionsIndices, (r) => 
+            GetAllConnectedRegions(startingPoint, regionsIndices, (r) =>
                 (!r.isOwned && !hasOwner) ||
                 (hasOwner && r.GetOwner(out byte theirOwner) && isAlliedWith(owner, theirOwner))
             );
@@ -975,7 +997,7 @@ namespace LouveSystems.K2.Lib
             bool hasOwner = regions[startingPoint].isOwned;
             byte owner = regions[startingPoint].ownerIndex;
 
-            GetAllConnectedRegions(startingPoint, regionsIndices, (r) => 
+            GetAllConnectedRegions(startingPoint, regionsIndices, (r) =>
                 (!r.isOwned && !hasOwner) ||
                 (hasOwner && r.IsOwnedBy(owner))
             );
@@ -1041,8 +1063,8 @@ namespace LouveSystems.K2.Lib
             // Remove duplicates
             for (int i = startIndex; i < count; i++) {
                 int value = neighbors[i];
-                for (int j = i+1; j < count; j++) {
-                    if (neighbors[j] == value) {    
+                for (int j = i + 1; j < count; j++) {
+                    if (neighbors[j] == value) {
                         neighbors.RemoveAt(j);
                         j--;
                         count--;
@@ -1101,7 +1123,7 @@ namespace LouveSystems.K2.Lib
             int eatenColumns = Math.Max(0, rules.eatFirstLastColumns - 3 + squareSideLength);
 
             for (int x = 0; x < SideLength; x++) {
-                if (x < eatenColumns || x >= SideLength- eatenColumns) {
+                if (x < eatenColumns || x >= SideLength - eatenColumns) {
                     for (int y = 0; y < SideLength; y++) {
                         Position position = new Position(x, y);
                         int index = Index(position);
@@ -1145,7 +1167,7 @@ namespace LouveSystems.K2.Lib
 
             int anglePerStep = 360 / positionCount;
 
-            int distanceFromCenter = (SquareSideLength/3) * OPTIMAL_REALM_SIZE
+            int distanceFromCenter = (SquareSideLength / 3) * OPTIMAL_REALM_SIZE
                 + OPTIMAL_REALM_SIZE + 1 + rules.initialSafetyMarginBetweenRealms;
 
             Position centerPosition = new Position(sideLength / 2, sideLength / 2);
@@ -1237,8 +1259,8 @@ namespace LouveSystems.K2.Lib
         private void InitializeCouncilRealm(byte realmIndex, in Position startingPosition)
         {
             InitializeRealm(
-                realmIndex, 
-                startingPosition, 
+                realmIndex,
+                startingPosition,
                 (byte)Math.Max(0, SquareSideLength - 3 + rules.board.council.councilRealmRegionSize)
             );
 
@@ -1249,7 +1271,7 @@ namespace LouveSystems.K2.Lib
             }
         }
 
-        private void InitializeRealm(byte realmIndex, in Position startingPosition, byte size=1)
+        private void InitializeRealm(byte realmIndex, in Position startingPosition, byte size = 1)
         {
             if (!IsValidRealmIndex(realmIndex)) {
                 return;
@@ -1283,7 +1305,7 @@ namespace LouveSystems.K2.Lib
             }
 
             ref Realm realm = ref realms[realmIndex];
-            AddSilverTreasury(realmIndex, this.rules.startingGold* 10);
+            AddSilverTreasury(realmIndex, this.rules.startingGold * 10);
 
             realm.availableDecisions = this.rules.startingDecisionCount;
         }
@@ -1326,7 +1348,6 @@ namespace LouveSystems.K2.Lib
             into.Write(councilRealmIndex ?? (byte)0);
             into.Write(regions);
             into.Write(realms);
-            into.Write(startingPositions);
             into.Write(rules);
         }
 
@@ -1344,7 +1365,11 @@ namespace LouveSystems.K2.Lib
 
             from.Read(default, ref regions);
             from.Read(default, ref realms);
-            from.Read(default, ref startingPositions);
+
+            if (version == 6){
+                Lib.Position[] startingPositions = default;
+                from.Read(default, ref startingPositions);
+            }
 
             rules.Read(from);
         }
@@ -1358,7 +1383,6 @@ namespace LouveSystems.K2.Lib
                 Extensions.Hash(
                     Extensions.Hash(regions),
                     Extensions.Hash(realms),
-                    Extensions.Hash(startingPositions),
                     Extensions.Hash(rules)
                 )
             );

@@ -4,8 +4,8 @@ namespace LouveSystems.K2.Lib
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
 
-  
     public class GameSession
     {
         public event Action<Transform> OnTransformAdded;
@@ -82,7 +82,7 @@ namespace LouveSystems.K2.Lib
         private readonly GameRules parameters;
 
         private readonly Dictionary<byte, SessionPlayer> sessionPlayers = new Dictionary<byte, SessionPlayer>();
-        
+
         private readonly StatisticsTracker statisticsRecorder = new StatisticsTracker();
 
         protected GameState gameState;
@@ -257,7 +257,7 @@ namespace LouveSystems.K2.Lib
 
             List<SessionPlayer> alliance = new List<SessionPlayer>(alliedRealms.Count);
             for (int i = 0; i < alliedRealms.Count; i++) {
-                foreach(var kv in sessionPlayers) {
+                foreach (var kv in sessionPlayers) {
                     if (kv.Value.RealmIndex == alliedRealms[i]) {
                         alliance.Add(kv.Value);
                         break;
@@ -273,22 +273,21 @@ namespace LouveSystems.K2.Lib
             var alliance = GetAlliance(containingPlayer);
             List<RegionAttackRegionTransform> attacks = new List<RegionAttackRegionTransform>();
             for (int i = 0; i < alliance.Count; i++) {
-                alliance[i].GetPlannedAttacks(attacks); 
+                alliance[i].GetPlannedAttacks(attacks);
             }
 
             return attacks;
         }
-        
+
         public bool GetOwnerOfRealm(int realmIndex, out SessionPlayer player, bool subjugator = true)
         {
-            if (GetOwnerOfRealm(realmIndex, out byte pId, subjugator))
-            {
+            if (GetOwnerOfRealm(realmIndex, out byte pId, subjugator)) {
                 player = SessionPlayers[pId];
                 return true;
             }
 
             player = default;
-            
+
             return false;
         }
 

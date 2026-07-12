@@ -10,7 +10,7 @@ namespace LouveSystems.K2.Lib
 
     public struct GameState : IBinarySerializable
     {
-        const byte VERSION = 6;
+        const byte VERSION = 7;
 
         public int daysPassed;
         public int councilsPassed;
