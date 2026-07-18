@@ -279,7 +279,10 @@ namespace LouveSystems.K2.Lib
         {
             bool hadOwner = regions[regionIndex].GetOwner(out byte previousOwner);
 
-            bool keepBuilding = GetRealmFaction(newOwningRealm).HasFlagSafe(EFactionFlag.ConquestBuilding);
+            bool keepBuilding =
+                GetRealmFaction(newOwningRealm).HasFlagSafe(EFactionFlag.ConquestBuilding)
+                && !IsActionableRegion(newOwningRealm, regionIndex);
+
             TakeOwnershipOfRegion(regionIndex, newOwningRealm, keepBuilding);
 
             OnRegionConquest?.Invoke(
