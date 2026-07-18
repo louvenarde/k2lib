@@ -704,7 +704,11 @@ namespace LouveSystems.K2.Lib
 
                     // In case of self attack,no coin flips if the self attacker is one of the majority attackers
                     int selfAttackerIndex = rules.factions.selfAttackAlwaysWinsCoinFlip ?
-                        potentialAttackers.FindIndex(o => world.IsActionableRegion(o, attackOrders[o].targetRegionIndex) && world.GetAllianceFaction(o).HasFlagSafe(EFactionFlag.SelfAttack)) :
+                        potentialAttackers.FindIndex(
+                            attackerRealmIndex => 
+                                world.IsActionableRegion(attackerRealmIndex, attackOrders[0].targetRegionIndex) && 
+                                world.GetAllianceFaction(attackerRealmIndex).HasFlagSafe(EFactionFlag.SelfAttack)
+                            ) :
                         -1;
 
                     if (selfAttackerIndex >= 0) {
