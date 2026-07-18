@@ -701,10 +701,21 @@ namespace LouveSystems.K2.Lib
 
                 // random choice
                 if (potentialAttackers.Count > 1) {
-                    majorityAttackingRealm = potentialAttackers[random.Next(potentialAttackers.Count)];
-                    majorityAttackingRealmIsACoinFlip = true;
-                    otherCoinFlippers.AddRange(potentialAttackers);
-                    otherCoinFlippers.Remove(majorityAttackingRealm);
+
+                    // In case of self attack,no coin flips if the self attacker is one of the majority attackers
+                    int selfAttackerIndex = rules.factions.selfAttackAlwaysWinsCoinFlip ?
+                        potentialAttackers.FindIndex(o => world.IsActionableRegion(o, attackOrders[o].targetRegionIndex) && world.GetAllianceFaction(o).HasFlagSafe(EFactionFlag.SelfAttack)) :
+                        -1;
+
+                    if (selfAttackerIndex >= 0) {
+                        majorityAttackingRealm = potentialAttackers[selfAttackerIndex];
+                    }
+                    else {
+                        majorityAttackingRealm = potentialAttackers[random.Next(potentialAttackers.Count)];
+                        majorityAttackingRealmIsACoinFlip = true;
+                        otherCoinFlippers.AddRange(potentialAttackers);
+                        otherCoinFlippers.Remove(majorityAttackingRealm);
+                    }
                 }
                 else {
                     majorityAttackingRealm = potentialAttackers[0];
@@ -776,7 +787,9 @@ namespace LouveSystems.K2.Lib
                     effect.factionHighlights |= EFactionFlag.SlitherAttacksBetweenRegions;
                 }
 
-                if (attackOwner == target.ownerIndex && attackingFaction.HasFlagSafe(EFactionFlag.SelfAttack)) {
+                if (attackOwner == target.ownerIndex && 
+                    attackingFaction.HasFlagSafe(EFactionFlag.SelfAttack)
+                ) {
                     effect.factionHighlights |= EFactionFlag.SelfAttack;
 
                     if (rules.factions.selfAttackReimbursesBuilding && 
@@ -821,9 +834,9 @@ namespace LouveSystems.K2.Lib
                     effect.factionHighlights |= EFactionFlag.ConqueredFortsGivePayout;
                 }
                 else {
-                    effect.silverLooted = canLoot ?
-                        world.GetRegionLootableSilverWorth(transform.targetRegionIndex, attackOwner) * attackingRegions.Count :
-                        0;
+                    if (canLoot) {
+                        effect.silverLooted = world.GetRegionLootableSilverWorth(transform.targetRegionIndex, attackOwner) * attackingRegions.Count;
+                    }
                 }
 
                 // Building capture is a prowess

@@ -6,7 +6,7 @@ namespace LouveSystems.K2.Lib
     [System.Serializable]
     public class GameRules : IBinarySerializable
     {
-        public const byte VERSION = 9;
+        public const byte VERSION = 10;
 
         [System.Serializable]
         public struct GlobalBoardSettings : IBinarySerializableWithVersion
@@ -170,6 +170,7 @@ namespace LouveSystems.K2.Lib
             public byte decoysSilverCost; // 5
 
             public bool selfAttackReimbursesBuilding;
+            public bool selfAttackAlwaysWinsCoinFlip; // yes
 
             public FactionSettings[] factionFlags;
 
@@ -216,6 +217,13 @@ namespace LouveSystems.K2.Lib
                 else {
                     selfAttackReimbursesBuilding = true;
                 }
+
+                if (version >= 10) {
+                    selfAttackAlwaysWinsCoinFlip = from.ReadBoolean();
+                }
+                else {
+                    selfAttackAlwaysWinsCoinFlip = true;
+                }
             }
 
             public void Write(BinaryWriter into)
@@ -236,6 +244,7 @@ namespace LouveSystems.K2.Lib
 
                 into.Write(decoysSilverCost);
                 into.Write(selfAttackReimbursesBuilding);
+                into.Write(selfAttackAlwaysWinsCoinFlip);
             }
         }
 

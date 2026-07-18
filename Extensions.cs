@@ -69,10 +69,11 @@ namespace LouveSystems.K2.Lib
 
         public static void Shuffle<T>(this IList<T> list)
         {
+            int r = (int)(UnityEngine.Random.value * ushort.MaxValue);
             int n = list.Count;
             while (n > 1) {
                 n--;
-                int k = Math.Abs(list.GetHashCode()) % n;
+                int k = Math.Abs(r) % n;
                 T value = list[k];
                 list[k] = list[n];
                 list[n] = value;
