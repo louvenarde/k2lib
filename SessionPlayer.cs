@@ -229,10 +229,11 @@ namespace LouveSystems.K2.Lib
             return gameSession.CurrentGameState.world.Realms[RealmIndex].availableDecisions + (AdminUpgradeIsPlanned() ? 1 : 0);
         }
 
+
         public int GetRemainingDecisions()
         {
             int maxDecisions = GetMaximumDecisions();
-            int decisionsTaken = gameSession.AwaitingTransforms.Sum(o => o.owningRealm == RealmIndex ? o.DecisionCost : 0);
+            int decisionsTaken = GetSumOfDecisionCosts();
 
             return maxDecisions - decisionsTaken;
         }
@@ -383,8 +384,19 @@ namespace LouveSystems.K2.Lib
 
         public bool AdminUpgradeIsPlanned()
         {
-            return gameSession.AwaitingTransforms.FindIndex(o =>
-            o is AdminUpgradeTransform adminUpgrade && adminUpgrade.realmToUpgrade == RealmIndex) >= 0;
+            // .FindIndex with cast creates an allocation apparently??
+            // So we dance instead
+            var transforms = gameSession.AwaitingTransforms;
+            for (int i = 0; i < transforms.Count; i++) {
+                if (transforms[i].Kind == Transform.ETransformKind.ImproveAdministration) {
+                    AdminUpgradeTransform adminUpgrade = transforms[i] as AdminUpgradeTransform;
+                    if (adminUpgrade.realmToUpgrade == RealmIndex) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public void WasteAction()
@@ -499,6 +511,19 @@ namespace LouveSystems.K2.Lib
 
             return false;
         }
+        private int GetSumOfDecisionCosts()
+        {
+            var awaitingTransforms = gameSession.AwaitingTransforms;
+            int result = 0;
+            for (int i = 0; i < awaitingTransforms.Count; i++) {
+                if (awaitingTransforms[i].owningRealm == RealmIndex) {
+                    result += awaitingTransforms[i].DecisionCost;
+                }
+            }
+
+            return result;
+        }
+
         private void Act(Transform transform)
         {
             gameSession.AddTransform(transform);

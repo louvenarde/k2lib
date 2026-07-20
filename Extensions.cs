@@ -67,6 +67,16 @@ namespace LouveSystems.K2.Lib
             return -1;
         }
 
+        public static int Sum<T>(this IReadOnlyList<T> list, Func<T, int> getter)
+        {
+            int result = 0;
+            for (int i = 0; i < list.Count; i++) {
+                result += getter(list[i]);
+            }
+
+            return result;
+        }
+
         public static void Shuffle<T>(this IList<T> list)
         {
             int r = (int)(UnityEngine.Random.value * ushort.MaxValue);
