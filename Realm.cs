@@ -10,7 +10,7 @@ namespace LouveSystems.K2.Lib
 
     public struct Realm : IBinarySerializableWithVersion
     {
-        // No reftype buffers? I'll make my reftype buffer.
+        // No valuetype buffers? I'll make my valuetype buffer.
         public struct ExtremelyNormalConstantSizeList : IList<byte>
         {
             private UInt64 value0;
