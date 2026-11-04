@@ -20,6 +20,25 @@ namespace LouveSystems.K2.Lib
                 c == 'ô' || c == 'é' || c == 'è' || c == 'ù' || c == 'ë' || c == '^';
         }
 
+        public static bool GetToken(this string line, string key, out string value)
+        {
+            int index = line.IndexOf($"{key}");
+            if (index >= 0) {
+                value = line.Substring(index+key.Length);
+                for (int i = 0; i < value.Length; i++) {
+                    if (value[i] == ' ') {
+                        value = value.Substring(0, i);
+                    }
+                }
+
+                value = value.Trim();
+                return true;
+            }
+
+            value = string.Empty;
+            return false;
+        }
+
         public static bool HasFlagSafe<T>(this T value, T flag) where T : Enum
         {
             return value.HasFlag(flag);
