@@ -791,7 +791,7 @@ namespace LouveSystems.K2.Lib
                     effect.factionHighlights |= EFactionFlag.SlitherAttacksBetweenRegions;
                 }
 
-                if (attackOwner == target.ownerIndex && 
+                if (target.IsOwnedBy(attackOwner) && 
                     attackingFaction.HasFlagSafe(EFactionFlag.SelfAttack)
                 ) {
                     effect.factionHighlights |= EFactionFlag.SelfAttack;
