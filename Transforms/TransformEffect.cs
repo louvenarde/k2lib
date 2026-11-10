@@ -2,6 +2,8 @@
 namespace LouveSystems.K2.Lib
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
 
     public interface ITransformEffect
     {
@@ -9,7 +11,7 @@ namespace LouveSystems.K2.Lib
         {
             //public bool IsFactionFeat => factionHighlights != EFactionFlag.None;
 
-            public bool Success => newOwningRealm != previousOwningRealm || 
+            public bool Success => newOwningRealm != previousOwningRealm ||
                 (newOwningRealm == previousOwningRealm && factionHighlights.HasFlagSafe(EFactionFlag.SelfAttack));
 
             public byte attackingRealm;
@@ -52,7 +54,7 @@ namespace LouveSystems.K2.Lib
 
             public bool IsFactionFeatForNewOwner(in GameState state)
             {
-                return 
+                return
                     newOwningRealm != byte.MaxValue &&
                     IsFactionFeatFor(state.world.GetRealmFaction(newOwningRealm));
             }
@@ -154,7 +156,7 @@ namespace LouveSystems.K2.Lib
             }
         }
 
-        public struct SubjugationEffect : ITransformEffect
+        public struct SubjugationAttemptEffect : ITransformEffect
         {
             public byte attackingRealmIndex;
             public byte targetRealmIndex;
@@ -169,14 +171,38 @@ namespace LouveSystems.K2.Lib
                     return; /// Should never happen
                 }
 
-                attacksBefore = previous.world.Realms[targetRealmIndex].GetSubjugatingAttacksReceived(attackingRealmIndex);
-                subjugationCompleted = next.world.AttemptSubjugation(attackingRealmIndex, targetRealmIndex);
-                attacksAfter = next.world.Realms[targetRealmIndex].GetSubjugatingAttacksReceived(attackingRealmIndex);
+                next.world.ReceiveSubjugatingAttack(attackingRealmIndex, targetRealmIndex);
             }
 
             public override string ToString()
             {
                 return $"{GetType()} by realm {attackingRealmIndex} (highlight {isFactionHighlight}) on {targetRealmIndex} (attackBefore: {attacksBefore} attackAfter: {attacksAfter}). SubjugationCompleted? {subjugationCompleted}";
+            }
+        }
+
+        public struct SubjugationEffect : ITransformEffect
+        {
+            public byte attackingRealmIndex;
+            public byte[] targetRealmsIndices;
+            public bool isLeadershipTransfer;
+
+
+            public void Apply(in GameState previous, ref GameState next)
+            {
+                if (isLeadershipTransfer) { // In general in these case there is a single targetRealmIndex
+                    for (int i = 0; i < targetRealmsIndices.Length; i++) {
+                        byte realmToSubjugate = targetRealmsIndices[i];
+                        if (previous.world.Realms[realmToSubjugate].lobbyTeamLeader) {
+                            next.world.TransferAllianceToSecond(realmToSubjugate); // This keeps the alliance in place but moves the leadership (and treasury et al) to another member
+                        }
+                    }
+                }
+
+                // Transfer remaining realms for real
+                for (int i = 0; i < targetRealmsIndices.Length; i++) {
+                    byte realmToSubjugate = targetRealmsIndices[i];
+                    next.world.SubjugateRealmOnly(attackingRealmIndex, realmToSubjugate);
+                }
             }
         }
 

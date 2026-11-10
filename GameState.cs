@@ -10,7 +10,7 @@ namespace LouveSystems.K2.Lib
 
     public struct GameState : IBinarySerializable
     {
-        const byte VERSION = 7;
+        const byte VERSION = 8;
 
         public int daysPassed;
         public int councilsPassed;
@@ -46,7 +46,7 @@ namespace LouveSystems.K2.Lib
             voting = new Voting(other.voting);
             statistics = new Statistics(other.statistics);
             board = other.board.Duplicate();
-            
+
             SuscribeToStatisticsEvents();
         }
 
@@ -202,7 +202,7 @@ namespace LouveSystems.K2.Lib
         public void ComputeEffects(ManagedRandom random, IReadOnlyList<Transform> transformsUnordered, out ITransformEffect[] effects)
         {
             Logger.Trace($"Computing {transformsUnordered.Count} UNORDERED transforms on {this}");
-            List<string> debugStrings = transformsUnordered.Select(o => o.ToString()).OrderBy((o)=>o).ToList();
+            List<string> debugStrings = transformsUnordered.Select(o => o.ToString()).OrderBy((o) => o).ToList();
 
             for (int i = 0; i < debugStrings.Count; i++) {
                 Logger.Trace($"{i}: {debugStrings[i]}");
@@ -235,10 +235,10 @@ namespace LouveSystems.K2.Lib
 
                 for (int i = attacksStart; i < effectsList.Count; i++) {
 
-                    if (i < effectsList.Count-1) {
-                        if (effectsList[i] is ITransformEffect.ConquestEffect conq && 
-                            effectsList[i+1] is ITransformEffect.SubjugationEffect subjugation &&
-                            subjugation.attackingRealmIndex ==conq.attackingRealm) {
+                    if (i < effectsList.Count - 1) {
+                        if (effectsList[i] is ITransformEffect.ConquestEffect conq &&
+                            effectsList[i + 1] is ITransformEffect.SubjugationAttemptEffect subjugation &&
+                            subjugation.attackingRealmIndex == conq.attackingRealm) {
 
                             queuedEffectGroup.Add(i);
 
@@ -247,18 +247,18 @@ namespace LouveSystems.K2.Lib
                     }
                 }
 
-                for (int i = effectsList.Count-1; i >= 0; i--) {
+                for (int i = effectsList.Count - 1; i >= 0; i--) {
                     if (queuedEffectGroup.Contains(i)) {
                         effectsList.Add(effectsList[i]);
                         effectsList.Add(effectsList[i + 1]);
-                        effectsList.RemoveAt(i+1);
+                        effectsList.RemoveAt(i + 1);
                         effectsList.RemoveAt(i);
                     }
                 }
 
                 // Cannot subjugate if you're the target of a subjugation
-                effectsList.RemoveAll(o => 
-                    o is ITransformEffect.SubjugationEffect sub &&
+                effectsList.RemoveAll(o =>
+                    o is ITransformEffect.SubjugationAttemptEffect sub &&
                     subjugationTargets.Contains(sub.attackingRealmIndex)
                 );
             }
@@ -288,7 +288,7 @@ namespace LouveSystems.K2.Lib
                                     List<int> neighboringRegions = new List<int>();
                                     ongoingSubjugationDuplicate.world.GetNeighboringRegions(capitalRegionIndex, neighboringRegions);
 
-                                    int[] links = neighboringRegions.Where(regionIndex => 
+                                    int[] links = neighboringRegions.Where(regionIndex =>
                                         ongoingSubjugationDuplicate.world.Regions[regionIndex].GetOwner(out byte regionOwner) &&
                                         ongoingSubjugationDuplicate.world.IsRealmAlliedWith(regionOwner, subjugatorIndex)
                                     ).ToArray();
@@ -375,7 +375,7 @@ namespace LouveSystems.K2.Lib
 
         public GameState Duplicate()
         {
-            GameState gameState = new (this);
+            GameState gameState = new(this);
             return gameState;
         }
 
@@ -477,8 +477,8 @@ namespace LouveSystems.K2.Lib
                                     break;
                                 }
                                 else if (rules.goTakeNeutralOnlyWhenNoContest && world.Regions[neighborRegionIndex].isOwned) {
-                                        // Go-take of unowned regions can only be accomplished when the takeover is TOTAL
-                                        // that means no contested borders of the target region group
+                                    // Go-take of unowned regions can only be accomplished when the takeover is TOTAL
+                                    // that means no contested borders of the target region group
                                     if (ownerNeighborFound.HasValue) {
                                         if (world.Regions[neighborRegionIndex].ownerIndex != ownerNeighborFound.Value) {
                                             isolated = false;
@@ -532,7 +532,7 @@ namespace LouveSystems.K2.Lib
             effects = effectsToAdd.OrderBy(o => o is ITransformEffect.ConquestEffect conquest && conquest.isACoinFlip).ToArray();
         }
 
-        private void SolveBorderGoreForRealm(in World world,  ManagedRandom random, byte realm, in List<ITransformEffect> effects, byte depth, bool allowNeutralization)
+        private void SolveBorderGoreForRealm(in World world, ManagedRandom random, byte realm, in List<ITransformEffect> effects, byte depth, bool allowNeutralization)
         {
             List<int> remainingRegionsToConnect = new List<int>();
             world.GetTerritoryOfRealm(realm, remainingRegionsToConnect);
@@ -592,7 +592,7 @@ namespace LouveSystems.K2.Lib
                         if (world.Regions[neighborRegionIndex].IsOwnedBy(realm)) {
                             // 🙅‍
                         }
-                        else if(world.Regions[neighborRegionIndex].isOwned) {
+                        else if (world.Regions[neighborRegionIndex].isOwned) {
                             score += 6;
                         }
                         else {
@@ -614,7 +614,7 @@ namespace LouveSystems.K2.Lib
             {
                 for (int i = 0; i < remainingRegionsToConnect.Count; i++) {
                     int regionIndex = remainingRegionsToConnect[i];
-                    
+
                     if (SolveBorderGoreForRegion(world, random, regionIndex, out ITransformEffect effect, depth, allowNeutralization)) {
                         effects.Add(effect);
                     }
@@ -627,10 +627,10 @@ namespace LouveSystems.K2.Lib
             effect = default;
 
             if (world.GetNaturalOwnerFromNeighbors(
-                regionIndex, 
+                regionIndex,
                 randomOptional,
-                discardCurrentOwner: true, 
-                out byte newOwner, 
+                discardCurrentOwner: true,
+                out byte newOwner,
                 out bool wasCoinFlip,
                 out bool isTotallySurrounded)
             ) {
@@ -705,8 +705,8 @@ namespace LouveSystems.K2.Lib
                     // In case of self attack,no coin flips if the self attacker is one of the majority attackers
                     int selfAttackerIndex = rules.factions.selfAttackAlwaysWinsCoinFlip ?
                         potentialAttackers.FindIndex(
-                            attackerRealmIndex => 
-                                world.IsActionableRegion(attackerRealmIndex, attackOrders[0].targetRegionIndex) && 
+                            attackerRealmIndex =>
+                                world.IsActionableRegion(attackerRealmIndex, attackOrders[0].targetRegionIndex) &&
                                 world.GetAllianceFaction(attackerRealmIndex).HasFlagSafe(EFactionFlag.SelfAttack)
                             ) :
                         -1;
@@ -752,7 +752,7 @@ namespace LouveSystems.K2.Lib
                         otherAttackOwner == attackOwner ||
 
                         // These are part of a coin flip and must be played together
-                        majorityAttackingRealmIsACoinFlip && 
+                        majorityAttackingRealmIsACoinFlip &&
                             (otherCoinFlippers.Contains(otherAttackOwner) || otherAttackOwner == majorityAttackingRealm)
                     ) {
                         attackingRegions.Add(attackOrders[i].AttackingRegionIndex);
@@ -771,7 +771,7 @@ namespace LouveSystems.K2.Lib
 
                 Region target = world.Regions[transform.targetRegionIndex];
                 EFactionFlag attackingFaction = world.GetAllianceFaction(attackOwner);
-                
+
                 ITransformEffect.ConquestEffect effect = new ITransformEffect.ConquestEffect();
                 effect.regionIndex = transform.targetRegionIndex;
                 effect.attackingRealm = attackOwner;
@@ -791,12 +791,12 @@ namespace LouveSystems.K2.Lib
                     effect.factionHighlights |= EFactionFlag.SlitherAttacksBetweenRegions;
                 }
 
-                if (target.IsOwnedBy(attackOwner) && 
+                if (target.IsOwnedBy(attackOwner) &&
                     attackingFaction.HasFlagSafe(EFactionFlag.SelfAttack)
                 ) {
                     effect.factionHighlights |= EFactionFlag.SelfAttack;
 
-                    if (rules.factions.selfAttackReimbursesBuilding && 
+                    if (rules.factions.selfAttackReimbursesBuilding &&
                         target.Building != EBuilding.None &&
                         !target.WasBuiltForFree) {
                         effect.silverLooted = target.SilverPricePaid;
@@ -861,23 +861,64 @@ namespace LouveSystems.K2.Lib
 
                 // Subjugation
                 bool canSubjugate = rules.subjugationForAll
-                    || (rules.factions.vassalsCanSubjugate ? 
+                    || (rules.factions.vassalsCanSubjugate ?
                         attackingFaction.HasFlagSafe(EFactionFlag.Subjugate) :
                         world.GetRealmFaction(attackOwner).HasFlagSafe(EFactionFlag.Subjugate)
                     );
 
-                if (canSubjugate && 
+                if (canSubjugate &&
                     target.isOwned &&
-                    effect.Success && 
+                    effect.Success &&
                     target.RelevantBuilding.HasFlagSafe(EBuilding.Capital)) {
 
-                    var subjugation = new ITransformEffect.SubjugationEffect() {
+                    byte total = (byte)(world.Realms[effect.previousOwningRealm].GetSubjugatingAttacksReceived(attackOwner) + 1);
+
+                    var subjugation = new ITransformEffect.SubjugationAttemptEffect() {
                         attackingRealmIndex = attackOwner,
                         targetRealmIndex = effect.previousOwningRealm,
-                        isFactionHighlight = !rules.subjugationForAll
+                        isFactionHighlight = !rules.subjugationForAll,
+                        attacksBefore = world.Realms[effect.previousOwningRealm].GetSubjugatingAttacksReceived(attackOwner),
+                        attacksAfter = total,
+                        subjugationCompleted = total >= rules.factions.subjugationAttacksRequired
                     };
 
                     effects.Add(subjugation);
+
+                    if (subjugation.subjugationCompleted) {
+                        List<byte> subjugationTargets = new List<byte>(subjugation.targetRealmIndex);
+                        if (world.Realms[subjugation.targetRealmIndex].lobbyTeamLeader) {
+                            // Only subjugate the team leader
+                        }
+                        else {
+                            // If there are vassals (not just allied realms), target them aswell
+                            subjugationTargets.Clear();
+                            world.GetAllianceRealms(subjugation.targetRealmIndex, subjugationTargets);
+                            for (int i = subjugationTargets.Count - 1; i >= 0; i--) {
+                                byte subjugationTarget = subjugationTargets[i];
+
+                                if (subjugationTarget == subjugation.targetRealmIndex) {
+                                    continue;
+                                }
+                                
+                                if (world.Realms[subjugationTarget].IsSubjugated(out byte subjugator) && subjugator == subjugation.targetRealmIndex) {
+                                    // This is a subjugated vassal that will be absorbed
+                                }
+                                else {
+                                    // Not a target
+                                    subjugationTargets.RemoveAt(i);
+                                }
+                            }
+
+                            // Just making sure i'm not stupid
+                            System.Diagnostics.Debug.Assert(subjugationTargets.Contains(subjugation.targetRealmIndex));
+                        }
+
+                        effects.Add(new ITransformEffect.SubjugationEffect() {
+                            attackingRealmIndex = attackOwner,
+                            isLeadershipTransfer = world.Realms[subjugation.targetRealmIndex].lobbyTeamLeader,
+                            targetRealmsIndices = subjugationTargets.ToArray()
+                        });
+                    }
                 }
 
                 if (state.board is BeastWorldBoard beastWorld) {
@@ -889,7 +930,7 @@ namespace LouveSystems.K2.Lib
         private void PlayAttacks(in GameState state, ManagedRandom random, List<RegionAttackRegionTransform> remainingAttacks, in List<ITransformEffect> effects)
         {
             Logger.Trace($"Playing {remainingAttacks.Count} attacks: \n{string.Join('\n', remainingAttacks)}");
-            
+
             World world = state.world;
 
             while (remainingAttacks.Count > 0) {

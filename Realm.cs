@@ -251,6 +251,11 @@ namespace LouveSystems.K2.Lib
 
         private ExtremelyNormalConstantSizeList subjugatingAttacksReceived;
 
+        // In team based match, a lobby team leader has a predefined set of realms subjugated to them
+        // That means when they're subjugated, they should transfer the team leadership to one of their vassals
+        //  instead of transferring the whole team to a new leader
+        public bool lobbyTeamLeader;
+
         public int GetHash()
         {
             Logger.Trace($"Obtaining hash of {this}...");
@@ -264,6 +269,7 @@ namespace LouveSystems.K2.Lib
             }
 
             Logger.Trace($"-> Hash of {nameof(beastsAttacked)} is {Extensions.Hash(beastsAttacked):X8}");
+            Logger.Trace($"-> Hash of {nameof(lobbyTeamLeader)} is {Extensions.Hash((lobbyTeamLeader ? 1 : 0)):X8}");
 
 
             int hash = Extensions.Hash(
@@ -271,6 +277,7 @@ namespace LouveSystems.K2.Lib
                 availableDecisions,
                 isFavoured ? 1 : 0,
                 factionIndex,
+                lobbyTeamLeader ? 1 : 0,
                 Extensions.Hash(subjugatingAttacksReceived.ToArray())
             );
 
@@ -343,6 +350,10 @@ namespace LouveSystems.K2.Lib
             isFavoured = from.ReadBoolean();
             factionIndex = from.ReadByte();
             beastsAttacked = from.ReadByte();
+
+            if (version >= 8) {
+                lobbyTeamLeader = from.ReadBoolean();
+            }
         }
 
         public void Write(BinaryWriter into)
@@ -352,6 +363,7 @@ namespace LouveSystems.K2.Lib
             into.Write(isFavoured);
             into.Write(factionIndex);
             into.Write(beastsAttacked);
+            into.Write(lobbyTeamLeader);
         }
 
         public override string ToString()

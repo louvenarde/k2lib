@@ -185,15 +185,19 @@ namespace LouveSystems.K2.Lib
                     teamSizes[i] = teamSize;
                 }
 
-                byte[] orderedRealmsIndicesToSpawn = 
+                byte[] orderedRealmsIndicesToSpawn =
                     Enumerable.Range(0, realmsToPosition)
-                    .Select(o=>(byte)o)
-                    .OrderBy(o=>teamSizes[o])
+                    .Select(o => (byte)o)
+                    .OrderBy(o => teamSizes[o])
                     .ToArray();
 
 
                 for (byte i = 0; i < orderedRealmsIndicesToSpawn.Length; i++) {
-                    InitializeRealm(orderedRealmsIndicesToSpawn[i], startingPositions[i], rules.initialRealmsSize);
+                    byte realmIndex = orderedRealmsIndicesToSpawn[i];
+                    InitializeRealm(realmIndex, startingPositions[i], rules.initialRealmsSize);
+                    // In case of a subjugation chain in the lobby, only the top level subjugator is normally counted
+                    // But that validation is clientside not k2side
+                    realms[realmIndex].lobbyTeamLeader |= teamSizes[realmIndex] > 1;
                 }
             }
             else {
@@ -331,7 +335,7 @@ namespace LouveSystems.K2.Lib
             realms[targetRealmIndex].RemoveSubjugatingAttackFrom(attackingRealmIndex);
         }
 
-        public bool AttemptSubjugation(byte attackingRealmIndex, byte targetRealmIndex)
+        public void ReceiveSubjugatingAttack(byte attackingRealmIndex, byte targetRealmIndex)
         {
             if (IsValidRealmIndex(attackingRealmIndex) && IsValidRealmIndex(targetRealmIndex)) {
 
@@ -342,29 +346,22 @@ namespace LouveSystems.K2.Lib
                     newOwner = attackingRealmIndex;
                 }
 
-
                 ref Realm targetRealm = ref realms[targetRealmIndex];
 
                 {
                     if (targetRealm.IsSubjugated(out byte subjugator) && subjugator == newOwner) {
-                        return false; // Not supposed to happen
+                        return; // Not supposed to happen
                     }
                 }
 
                 targetRealm.AddSubjugatingAttackFrom(newOwner);
 
                 Logger.Trace($"Realm {targetRealmIndex} ({realms[targetRealmIndex]}) has received 1 subjugating attack from {newOwner} ({realms[newOwner]})");
-
-                if (targetRealm.GetSubjugatingAttacksReceived(newOwner) >= rules.factions.subjugationAttacksRequired) {
-                    SubjugateRealm(attackingRealmIndex, targetRealmIndex);
-                    return true;
-                }
             }
-
-            return false;
         }
 
-        public void SubjugateRealm(byte attackingRealmIndex, byte targetRealmIndex)
+        // This is a "Dumb" function that does not handle vassal transfer or anything
+        public void SubjugateRealmOnly(byte attackingRealmIndex, byte targetRealmIndex)
         {
             if (IsValidRealmIndex(attackingRealmIndex) && IsValidRealmIndex(targetRealmIndex)) {
 
@@ -380,26 +377,61 @@ namespace LouveSystems.K2.Lib
                 targetRealm.subjugatedBy = newOwner;
 
                 ref Realm newOwningRealm = ref realms[newOwner];
-                newOwningRealm.silverTreasury += targetRealm.silverTreasury;
-                targetRealm.silverTreasury = 0;
 
                 newOwningRealm.isFavoured |= targetRealm.isFavoured;
                 targetRealm.isFavoured = false;
+
+                newOwningRealm.silverTreasury += targetRealm.silverTreasury;
+                targetRealm.silverTreasury = 0;
+
+                targetRealm.lobbyTeamLeader = false;
 
                 targetRealm.ClearSubjugatingAttacks();
 
                 Logger.Trace($"Realm {targetRealmIndex} ({realms[targetRealmIndex]}) is now subjugated by realm {newOwner} ({realms[newOwner]})");
 
-                // Also avoid nesting subjugations
-                for (int i = 0; i < realms.Length; i++) {
-                    if (realms[i].IsSubjugated(out byte subjugator) && subjugator == targetRealmIndex) {
-                        // They're mine nows!
-                        realms[i].subjugatedBy = newOwner;
-                        Logger.Trace($"Realm {i} ({realms[i]} is now ALSO subjugated by realm {newOwner} ({realms[newOwner]}) because their prior subjugator was realm {targetRealmIndex}, who's getting subjugated right now");
-                    }
-                }
-
             }
+        }
+
+        public bool TransferAllianceToSecond(byte realmToSubjugate)
+        {
+            if (realms[realmToSubjugate].lobbyTeamLeader) {
+
+                List<byte> formerAlliance = new List<byte>();
+                GetAllianceRealms(realmToSubjugate, formerAlliance);
+                formerAlliance.Remove(realmToSubjugate);
+
+                if (formerAlliance.Count > 0) {
+
+                    if (formerAlliance.Count > 1) {
+                        World worldCpy = this; // C#ism
+
+                        // Give it to whoever is the most advanced right now (leadership is not a big deal anyway)
+                        formerAlliance = formerAlliance
+                            .OrderByDescending(o => worldCpy.realms[o].availableDecisions)
+                            .ThenByDescending(o => worldCpy.regions.Count(r => r.IsOwnedBy(o)))
+                            .ToList();
+                    }
+
+                    byte newAllianceLeader = formerAlliance[0];
+                    SubjugateRealmOnly(newAllianceLeader, realmToSubjugate); // This steals the money and favour
+                    realms[newAllianceLeader].lobbyTeamLeader = true; // Sticky flag
+
+                    // Absorb remaining alliance members
+                    formerAlliance.Remove(newAllianceLeader);
+                    if (formerAlliance.Count > 0) {
+                        for(int allianceMemberIndex = 0; allianceMemberIndex < formerAlliance.Count; allianceMemberIndex++) {
+                            byte toTransfer = formerAlliance[allianceMemberIndex];
+                            SubjugateRealmOnly(newAllianceLeader, toTransfer);
+                        }
+                    }
+
+                    System.Diagnostics.Debug.Assert(!realms[realmToSubjugate].lobbyTeamLeader, "After transferring alliance leadership to second, initial leader is still leader");
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public bool IsCompletelySubjugated(out byte realmIndex)
@@ -1369,7 +1401,7 @@ namespace LouveSystems.K2.Lib
             from.Read(default, ref regions);
             from.Read(default, ref realms);
 
-            if (version == 6){
+            if (version == 6) {
                 Lib.Position[] startingPositions = default;
                 from.Read(default, ref startingPositions);
             }
