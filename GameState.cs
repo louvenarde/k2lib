@@ -909,7 +909,7 @@ namespace LouveSystems.K2.Lib
                     effects.Add(subjugation);
 
                     if (subjugation.subjugationCompleted) {
-                        List<byte> subjugationTargets = new List<byte>(subjugation.targetRealmIndex);
+                        List<byte> subjugationTargets = new List<byte>() { subjugation.targetRealmIndex };
                         if (world.Realms[subjugation.targetRealmIndex].lobbyTeamLeader) {
                             // Only subjugate the team leader
                         }

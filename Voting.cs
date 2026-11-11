@@ -150,8 +150,12 @@ namespace LouveSystems.K2.Lib
 
                 sb.AppendLine($"{wastedVotes} were wasted");
 
-                for (int i = 0; i < scores.Length; i++) {
-                    sb.AppendLine($"Realm {scores[i].realmIndex} won the following categories: {string.Join(", ", scores[i].wonCriterias)} for a total of {scores[i].totalVotes} votes");
+                if (scores != null) {
+                    for (int i = 0; i < scores.Length; i++) {
+                        if (scores[i].wonCriterias != null) {
+                            sb.AppendLine($"Realm {scores[i].realmIndex} won the following categories: {string.Join(", ", scores[i].wonCriterias)} for a total of {scores[i].totalVotes} votes");
+                        }
+                    }
                 }
 
 
