@@ -200,6 +200,20 @@ namespace LouveSystems.K2.Lib
             int total = 0;
             gameSession.AwaitingTransforms.ForEach(o =>
             {
+                if (o is RegionBuildTransform build && build.owningRealm == RealmIndex) {
+                    total++;
+                }
+            });
+
+            count = total;
+            return count > 0;
+        }
+
+        public bool IsAllianceBuildingAnything(out int count)
+        {
+            int total = 0;
+            gameSession.AwaitingTransforms.ForEach(o =>
+            {
                 if (o is RegionBuildTransform build && CanControlRealm(build.owningRealm)) {
                     total++;
                 }
@@ -209,7 +223,7 @@ namespace LouveSystems.K2.Lib
             return count > 0;
         }
 
-        public bool IsBuildingSomething(int regionIndex, out EBuilding building)
+        public bool IsAllianceBuildingSomething(int regionIndex, out EBuilding building)
         {
             if (gameSession.AwaitingTransforms.Find(o =>
                 o is RegionBuildTransform build &&

@@ -157,7 +157,7 @@ namespace LouveSystems.K2.Lib
         public bool GetPlannedConstructionForRegion(int regionIndex, out SessionPlayer player, out EBuilding building)
         {
             foreach (var sessionPlayer in SessionPlayers) {
-                if (sessionPlayer.Value.IsBuildingSomething(regionIndex, out building)) {
+                if (sessionPlayer.Value.IsAllianceBuildingSomething(regionIndex, out building)) {
                     player = sessionPlayer.Value;
                     return true;
                 }
