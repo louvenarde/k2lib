@@ -96,34 +96,58 @@ namespace LouveSystems.K2.Lib
 
             gameState = new GameState(party, parameters);
 
-            List<byte> realmsIndices = new List<byte>();
-            for (byte i = 0; i < gameState.world.Realms.Count; i++) {
-                realmsIndices.Add(i);
+            int nbPlayer = party.realmsToInitialize.Length;
+            List<byte> playerOrderIndices = new List<byte>();
+            for (byte i = 0; i < nbPlayer; i++) {
+                playerOrderIndices.Add(i);
             }
+            playerOrderIndices.Shuffle(Random);
 
-            realmsIndices.RemoveAll(CurrentGameState.world.IsRealmExcludedFromVoting);
-            realmsIndices.Shuffle(Random);
+            // Bubble sort by team, team order and player order are preserved
+            byte current = 0;
+            do {
+                byte currentLeader = party.realmsToInitialize[playerOrderIndices[current]].initialSubjugatorPlayerId.GetValueOrDefault(party.realmsToInitialize[playerOrderIndices[current]].forPlayerId);
+                current++;
+                for (int i = current; i < playerOrderIndices.Count; i++) {
+                    byte thisLeader = party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.GetValueOrDefault(party.realmsToInitialize[playerOrderIndices[i]].forPlayerId);
+                    if (thisLeader == currentLeader) {
+                        byte tmp = playerOrderIndices[current];
+                        playerOrderIndices[current] = playerOrderIndices[i];
+                        playerOrderIndices[i] = tmp;
+                        break;
+                    }
+                }
+            } while (current < playerOrderIndices.Count);
 
             gameState.world.Modify(out Region[] regions, out Realm[] realms);
 
-            for (byte i = 0; i < party.realmsToInitialize.Length; i++) {
-                byte playerId = party.realmsToInitialize[i].forPlayerId;
+            int realmIndexOffset = Random.Next(nbPlayer);
+            for (byte i = 0; i < nbPlayer; i++) {
+                byte realmIndex = (byte)((i + realmIndexOffset) % nbPlayer);
+
+                byte playerId = party.realmsToInitialize[playerOrderIndices[i]].forPlayerId;
                 sessionPlayers[playerId] = CreatePlayer(playerId);
-                sessionPlayers[playerId].RealmIndex = realmsIndices[i];
-                realms[realmsIndices[i]].factionIndex = party.realmsToInitialize[i].factionIndex;
+                sessionPlayers[playerId].RealmIndex = realmIndex;
+                realms[realmIndex].factionIndex = party.realmsToInitialize[playerOrderIndices[i]].factionIndex;
             }
 
-            for (byte i = 0; i < party.realmsToInitialize.Length; i++) {
-                if (party.realmsToInitialize[i].initialSubjugatorPlayerId.HasValue) {
-                    byte subjugator = party.realmsToInitialize[i].initialSubjugatorPlayerId.Value;
+            for (byte i = 0; i < nbPlayer; i++) {
+                byte realmIndex = (byte)((i + realmIndexOffset) % nbPlayer);
+
+                if (party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.HasValue) {
+                    byte subjugator = party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.Value;
                     if (sessionPlayers.TryGetValue(subjugator, out SessionPlayer sessionPlayer)) {
-                        realms[realmsIndices[i]].isSubjugated = true;
-                        realms[realmsIndices[i]].subjugatedBy = sessionPlayer.RealmIndex;
+                        realms[realmIndex].isSubjugated = true;
+                        realms[realmIndex].subjugatedBy = sessionPlayer.RealmIndex;
 
                         // Transfer all gold
-                        realms[sessionPlayer.RealmIndex].silverTreasury += realms[realmsIndices[i]].silverTreasury;
-                        realms[realmsIndices[i]].silverTreasury = 0;
+                        realms[sessionPlayer.RealmIndex].silverTreasury += realms[realmIndex].silverTreasury;
+                        realms[realmIndex].silverTreasury = 0;
+                    } else {
+                        realms[realmIndex].lobbyTeamLeader = true;
                     }
+                } else {
+                    realms[realmIndex].lobbyTeamLeader = true;
                 }
             }
 

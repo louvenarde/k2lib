@@ -6,7 +6,7 @@ namespace LouveSystems.K2.Lib
     [System.Serializable]
     public class GameRules : IBinarySerializable
     {
-        public const byte VERSION = 10;
+        public const byte VERSION = 11;
 
         [System.Serializable]
         public struct GlobalBoardSettings : IBinarySerializableWithVersion
@@ -411,6 +411,8 @@ namespace LouveSystems.K2.Lib
 
         public bool subjugationForAll = false;
 
+        public bool teamsStartTogether = true;
+
         public VotingRules voting = new VotingRules();
 
         public BuildingSettings[] buildings = new BuildingSettings[0];
@@ -462,6 +464,8 @@ namespace LouveSystems.K2.Lib
             into.Write(goTakeDestroysBuildings);
 
             board.Write(into);
+
+            into.Write(teamsStartTogether);
         }
 
         public void Read(BinaryReader from)
@@ -484,7 +488,7 @@ namespace LouveSystems.K2.Lib
             initialSafetyMarginBetweenRealms = from.ReadByte();
             initialVoteTurnsDelay = from.ReadByte();
             decisionTimeSeconds = from.ReadInt32();
-            additionalDecisionTimeSecondsOnFirstTurn = from.ReadInt32(); 
+            additionalDecisionTimeSecondsOnFirstTurn = from.ReadInt32();
             enhanceAdminGoldPrice = from.ReadByte();
             enhanceAdminGoldPriceIncreasePerUpgrade = from.ReadByte();
             favourGoldPrice = from.ReadByte();
@@ -520,6 +524,10 @@ namespace LouveSystems.K2.Lib
 
             if (version >= 9) {
                 board.Read(version, from);
+            }
+
+            if (version >= 11) {
+                teamsStartTogether = from.ReadBoolean();
             }
         }
 

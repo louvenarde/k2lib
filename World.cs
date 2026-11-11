@@ -122,9 +122,11 @@ namespace LouveSystems.K2.Lib
             EatCorners();
 
             bool isRealmCountPowerOfTwo = (realmCountWithoutCouncil & (realmCountWithoutCouncil - 1)) == 0;
+            bool teamBased = playerParams.realmsToInitialize.Any(o => o.initialSubjugatorPlayerId.HasValue);
+            if (!rules.teamsStartTogether) teamBased = false;
             Lib.Position[] positions = isRealmCountPowerOfTwo ?
-                GetPossibleGridAlignedPositions() :
-                GetPossibleRotationaryPositions(realmCountWithoutCouncil);
+                GetPossibleGridAlignedPositions(teamBased) :
+                GetPossibleRotationaryPositions(realmCountWithoutCouncil, teamBased);
 
             if (positions.Length < realmCountWithoutCouncil) {
                 throw new System.Exception($"Map is too small (needed to create {realms.Length} realms and have only {positions.Length}, square side is {squareSideLength})");
@@ -165,45 +167,8 @@ namespace LouveSystems.K2.Lib
                 realmsToPosition--;
             }
 
-            bool teamBased = playerParams.realmsToInitialize.Any(o => o.initialSubjugatorPlayerId.HasValue);
-            if (teamBased) {
-                // Spawn teammates close to each other
-                Dictionary<byte, int> teamSizes = new();
-                for (byte i = 0; i < playerParams.realmsToInitialize.Length; i++) {
-                    int teamSize = 1;
-
-                    for (byte j = 0; j < playerParams.realmsToInitialize.Length; j++) {
-                        if (j == i) {
-                            continue;
-                        }
-
-                        if (playerParams.realmsToInitialize[j].initialSubjugatorPlayerId == playerParams.realmsToInitialize[i].forPlayerId) {
-                            teamSize++;
-                        }
-                    }
-
-                    teamSizes[i] = teamSize;
-                }
-
-                byte[] orderedRealmsIndicesToSpawn =
-                    Enumerable.Range(0, realmsToPosition)
-                    .Select(o => (byte)o)
-                    .OrderBy(o => teamSizes[o])
-                    .ToArray();
-
-
-                for (byte i = 0; i < orderedRealmsIndicesToSpawn.Length; i++) {
-                    byte realmIndex = orderedRealmsIndicesToSpawn[i];
-                    InitializeRealm(realmIndex, startingPositions[i], rules.initialRealmsSize);
-                    // In case of a subjugation chain in the lobby, only the top level subjugator is normally counted
-                    // But that validation is clientside not k2side
-                    realms[realmIndex].lobbyTeamLeader |= teamSizes[realmIndex] > 1;
-                }
-            }
-            else {
-                for (byte i = 0; i < realmsToPosition; i++) {
-                    InitializeRealm(i, startingPositions[i], rules.initialRealmsSize);
-                }
+            for (byte i = 0; i < realmsToPosition; i++) {
+                InitializeRealm(i, startingPositions[i], rules.initialRealmsSize);
             }
         }
 
@@ -1196,7 +1161,7 @@ namespace LouveSystems.K2.Lib
             }
         }
 
-        private Position[] GetPossibleRotationaryPositions(int positionCount)
+        private Position[] GetPossibleRotationaryPositions(int positionCount, bool sortByClosest)
         {
             List<Position> positions = new List<Position>();
 
@@ -1221,10 +1186,15 @@ namespace LouveSystems.K2.Lib
                 positions.Add(position);
             }
 
-            return SortPositionsByFurtherFromEachOther(positions);
+            if (sortByClosest) {
+                return SortPositionsByClosest(positions);
+            }
+            else {
+                return SortPositionsByFurtherFromEachOther(positions);
+            }
         }
 
-        private Position[] GetPossibleGridAlignedPositions()
+        private Position[] GetPossibleGridAlignedPositions(bool sortByClosest)
         {
             List<Position> positions = new List<Position>();
 
@@ -1250,7 +1220,12 @@ namespace LouveSystems.K2.Lib
                 }
             }
 
-            return SortPositionsByFurtherFromEachOther(positions);
+            if (sortByClosest) {
+                return SortPositionsByClosest(positions);
+            }
+            else {
+                return SortPositionsByFurtherFromEachOther(positions);
+            }
         }
 
         private Position[] SortPositionsByFurtherFromEachOther(List<Position> positions)
@@ -1286,6 +1261,34 @@ namespace LouveSystems.K2.Lib
                 newPositions.Add(pos);
 
                 System.Diagnostics.Debug.Assert(removed);
+            }
+
+            return newPositions.ToArray();
+        }
+
+        // Create a chain of closest position starting at index N-1
+        private Position[] SortPositionsByClosest(List<Position> positions)
+        {
+            if (positions.Count == 1) {
+                return new Position[] { positions[0] };
+            }
+
+            if (positions.Count == 0) {
+                return new Position[0];
+            }
+
+            List<Position> positionsLeftToSort = new List<Position>(positions);
+            Position currentPos = positionsLeftToSort.Last();
+            positionsLeftToSort.RemoveAt(positionsLeftToSort.Count - 1);
+
+            List<Position> newPositions = new List<Position>(positions.Count);
+            newPositions.Add(currentPos);
+
+            while (positionsLeftToSort.Count > 0) {
+                Position pos = positionsLeftToSort.OrderBy((o) => o.DistanceWith(currentPos)).First();
+                bool removed = positionsLeftToSort.Remove(pos);
+                newPositions.Add(pos);
+                currentPos = pos;
             }
 
             return newPositions.ToArray();
