@@ -249,8 +249,25 @@ namespace LouveSystems.K2.Lib
 
                 for (int i = effectsList.Count - 1; i >= 0; i--) {
                     if (queuedEffectGroup.Contains(i)) {
+
+                        bool hasSubjugationAfterAttempt = false;
+
+                        if (effectsList[i + 1] is ITransformEffect.SubjugationAttemptEffect attempt) { // Always true
+                            if (attempt.subjugationCompleted && 
+                                effectsList[i + 2] is ITransformEffect.SubjugationEffect subjugation &&
+                                subjugation.attackingRealmIndex == attempt.attackingRealmIndex) {
+                                hasSubjugationAfterAttempt = true;
+                            }
+                        }
+
                         effectsList.Add(effectsList[i]);
                         effectsList.Add(effectsList[i + 1]);
+                        
+                        if (hasSubjugationAfterAttempt) {
+                            effectsList.Add(effectsList[i + 2]);
+                            effectsList.RemoveAt(i + 2);
+                        }
+
                         effectsList.RemoveAt(i + 1);
                         effectsList.RemoveAt(i);
                     }
@@ -258,8 +275,15 @@ namespace LouveSystems.K2.Lib
 
                 // Cannot subjugate if you're the target of a subjugation
                 effectsList.RemoveAll(o =>
-                    o is ITransformEffect.SubjugationAttemptEffect sub &&
-                    subjugationTargets.Contains(sub.attackingRealmIndex)
+                    (
+                        o is ITransformEffect.SubjugationAttemptEffect subAt &&
+                        subjugationTargets.Contains(subAt.attackingRealmIndex)
+                    )
+                    ||
+                    (
+                        o is ITransformEffect.SubjugationEffect sub &&
+                        subjugationTargets.Contains(sub.attackingRealmIndex)
+                    )
                 );
             }
 
@@ -899,7 +923,7 @@ namespace LouveSystems.K2.Lib
                                 if (subjugationTarget == subjugation.targetRealmIndex) {
                                     continue;
                                 }
-                                
+
                                 if (world.Realms[subjugationTarget].IsSubjugated(out byte subjugator) && subjugator == subjugation.targetRealmIndex) {
                                     // This is a subjugated vassal that will be absorbed
                                 }
