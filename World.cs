@@ -1401,8 +1401,8 @@ namespace LouveSystems.K2.Lib
                 councilRealmIndex = realmIndex;
             }
 
-            from.Read(default, ref regions);
-            from.Read(default, ref realms);
+            from.Read(version, ref regions);
+            from.Read(version, ref realms);
 
             if (version == 6) {
                 Lib.Position[] startingPositions = default;

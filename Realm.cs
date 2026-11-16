@@ -11,7 +11,7 @@ namespace LouveSystems.K2.Lib
     public struct Realm : IBinarySerializableWithVersion
     {
         // No valuetype buffers? I'll make my valuetype buffer.
-        public struct ExtremelyNormalConstantSizeList : IList<byte>
+        public struct ExtremelyNormalConstantSizeList : IList<byte>, IBinarySerializable
         {
             private UInt64 value0;
             private UInt64 value8;
@@ -218,6 +218,12 @@ namespace LouveSystems.K2.Lib
                 throw new System.NotImplementedException();
             }
 
+            public void Read(BinaryReader from)
+            {
+                this.value0 = from.ReadUInt64();
+                this.value8 = from.ReadUInt64();
+            }
+
             public bool Remove(byte item)
             {
                 throw new System.NotImplementedException();
@@ -226,6 +232,12 @@ namespace LouveSystems.K2.Lib
             public void RemoveAt(int index)
             {
                 throw new System.NotImplementedException();
+            }
+
+            public void Write(BinaryWriter into)
+            {
+                into.Write(this.value0);
+                into.Write(this.value8);
             }
 
             IEnumerator IEnumerable.GetEnumerator()
@@ -354,6 +366,12 @@ namespace LouveSystems.K2.Lib
             if (version >= 8) {
                 lobbyTeamLeader = from.ReadBoolean();
             }
+
+            if (version >= 9) {
+                isSubjugated = from.ReadBoolean();
+                subjugatedBy = from.ReadByte();
+                from.Read(ref subjugatingAttacksReceived);
+            }
         }
 
         public void Write(BinaryWriter into)
@@ -364,6 +382,10 @@ namespace LouveSystems.K2.Lib
             into.Write(factionIndex);
             into.Write(beastsAttacked);
             into.Write(lobbyTeamLeader);
+
+            into.Write(isSubjugated);
+            into.Write(subjugatedBy);
+            into.Write(subjugatingAttacksReceived);
         }
 
         public override string ToString()
