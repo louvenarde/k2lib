@@ -8,7 +8,6 @@ namespace LouveSystems.K2.Lib
 
     public struct BeastWorldBoard : IBoard
     {
-        const byte VERSION = 1;
         public struct SetEnragedBeastEffect : ITransformEffect
         {
             public byte beastIndex;
@@ -431,15 +430,17 @@ namespace LouveSystems.K2.Lib
             };
         }
 
-        public void Read(BinaryReader from)
+        public void Read(byte version, BinaryReader from)
         {
-            byte version = from.ReadByte();
+            if (version <= 8) {
+                from.ReadByte(); // Skip one byte
+            }
+
             from.Read(version, ref beasts);
         }
 
         public void Write(BinaryWriter into)
         {
-            into.Write(VERSION);
             into.Write(beasts);
         }
 

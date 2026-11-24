@@ -165,7 +165,7 @@ namespace LouveSystems.K2.Lib
             public int GetHash()
             {
                 return Extensions.Hash(
-                    scores == null ? 0 : Extensions.Hash(scores),
+                    Extensions.Hash(scores ?? new VoteScore[0]),
                     wastedVotes
                 );
             }

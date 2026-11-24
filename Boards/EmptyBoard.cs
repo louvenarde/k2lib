@@ -26,7 +26,7 @@ namespace LouveSystems.K2.Lib
         {
         }
 
-        public void Read(BinaryReader from)
+        public void Read(byte version, BinaryReader from)
         {
         }
 

@@ -10,7 +10,7 @@ namespace LouveSystems.K2.Lib
 
     public struct GameState : IBinarySerializable
     {
-        const byte VERSION = 8;
+        const byte VERSION = 10;
 
         public int daysPassed;
         public int councilsPassed;
@@ -386,7 +386,7 @@ namespace LouveSystems.K2.Lib
 
         public int GetHash()
         {
-            return Extensions.Hash(
+            int hash = Extensions.Hash(
                 Extensions.Hash(
                     daysPassed,
                     councilsPassed
@@ -395,6 +395,9 @@ namespace LouveSystems.K2.Lib
                 Extensions.Hash(voting),
                 Extensions.Hash(board)
             );
+
+            Logger.Trace($"Hash of {GetType()} is {hash}");
+            return hash;
         }
 
         public GameState Duplicate()
@@ -1079,6 +1082,8 @@ namespace LouveSystems.K2.Lib
             into.Write(world);
             into.Write(voting);
             into.Write(statistics);
+            into.Write(rules);
+            into.Write(board);
         }
 
         public void Read(BinaryReader from)
@@ -1097,6 +1102,14 @@ namespace LouveSystems.K2.Lib
 
             statistics = new Statistics();
             statistics.Read(version, from);
+
+            rules = new GameRules();
+            if (version >= 10) {
+                rules.Read(from);
+
+                board = IBoard.CreateBoard(rules.board, world);
+                board.Read(version, from);
+            }
         }
     }
 }

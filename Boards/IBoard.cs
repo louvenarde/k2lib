@@ -3,7 +3,7 @@ namespace LouveSystems.K2.Lib
 {
     using System.Collections.Generic;
 
-    public interface IBoard : IBinarySerializable
+    public interface IBoard : IBinarySerializableWithVersion
     {
         public EBoardType Type { get; }
 

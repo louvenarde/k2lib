@@ -96,7 +96,12 @@ namespace LouveSystems.K2.Lib
 
             gameState = new GameState(party, parameters);
 
-            int nbPlayer = party.realmsToInitialize.Length;
+            // Order of realms to initialize is meant to be irrelevant as PlayerID is the determining factor
+            // But depending on the order of the array provided, initialization here can go different ways
+            // It's fine for multiplayer because the party order is synchronized, but this is not meant to be a 
+            //     deterministic factor - in fact, it breaks replays! So let's give it a forced order.
+            var realmsToInitialize = party.realmsToInitialize.OrderBy(o => o.forPlayerId).ToArray();
+            int nbPlayer = realmsToInitialize.Length;
             List<byte> playerOrderIndices = new List<byte>();
             for (byte i = 0; i < nbPlayer; i++) {
                 playerOrderIndices.Add(i);
@@ -106,10 +111,10 @@ namespace LouveSystems.K2.Lib
             // Bubble sort by team, team order and player order are preserved
             byte current = 0;
             do {
-                byte currentLeader = party.realmsToInitialize[playerOrderIndices[current]].initialSubjugatorPlayerId.GetValueOrDefault(party.realmsToInitialize[playerOrderIndices[current]].forPlayerId);
+                byte currentLeader = realmsToInitialize[playerOrderIndices[current]].initialSubjugatorPlayerId.GetValueOrDefault(realmsToInitialize[playerOrderIndices[current]].forPlayerId);
                 current++;
                 for (int i = current; i < playerOrderIndices.Count; i++) {
-                    byte thisLeader = party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.GetValueOrDefault(party.realmsToInitialize[playerOrderIndices[i]].forPlayerId);
+                    byte thisLeader = realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.GetValueOrDefault(realmsToInitialize[playerOrderIndices[i]].forPlayerId);
                     if (thisLeader == currentLeader) {
                         byte tmp = playerOrderIndices[current];
                         playerOrderIndices[current] = playerOrderIndices[i];
@@ -125,17 +130,17 @@ namespace LouveSystems.K2.Lib
             for (byte i = 0; i < nbPlayer; i++) {
                 byte realmIndex = (byte)((i + realmIndexOffset) % nbPlayer);
 
-                byte playerId = party.realmsToInitialize[playerOrderIndices[i]].forPlayerId;
+                byte playerId = realmsToInitialize[playerOrderIndices[i]].forPlayerId;
                 sessionPlayers[playerId] = CreatePlayer(playerId);
                 sessionPlayers[playerId].RealmIndex = realmIndex;
-                realms[realmIndex].factionIndex = party.realmsToInitialize[playerOrderIndices[i]].factionIndex;
+                realms[realmIndex].factionIndex = realmsToInitialize[playerOrderIndices[i]].factionIndex;
             }
 
             for (byte i = 0; i < nbPlayer; i++) {
                 byte realmIndex = (byte)((i + realmIndexOffset) % nbPlayer);
 
-                if (party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.HasValue) {
-                    byte subjugator = party.realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.Value;
+                if (realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.HasValue) {
+                    byte subjugator = realmsToInitialize[playerOrderIndices[i]].initialSubjugatorPlayerId.Value;
                     if (sessionPlayers.TryGetValue(subjugator, out SessionPlayer sessionPlayer)) {
                         realms[realmIndex].isSubjugated = true;
                         realms[realmIndex].subjugatedBy = sessionPlayer.RealmIndex;

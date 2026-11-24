@@ -26,9 +26,14 @@ namespace LouveSystems.K2.Lib
             this.gameSession = session;
         }
 
-        public bool CanSeePlannedAttacksOf(byte otherRealmIndex)
+        public virtual bool CanSeePlannedAttacksOf(byte otherRealmIndex)
         {
             return gameSession.CurrentGameState.world.CanSeePlannedAttacksOf(RealmIndex, otherRealmIndex);
+        }
+
+        public virtual bool CanSeePlannedConstructionsOf(byte otherRealmIndex)
+        {
+            return gameSession.CurrentGameState.world.CanSeePlannedConstructionsOf(RealmIndex, otherRealmIndex);
         }
 
         public bool CanSeePlannedAttacksOf(SessionPlayer otherSessionPlayer)
@@ -38,12 +43,7 @@ namespace LouveSystems.K2.Lib
 
         public bool CanSeePlannedConstructionsOf(SessionPlayer otherSessionPlayer)
         {
-            return gameSession.CurrentGameState.world.CanSeePlannedConstructionsOf(RealmIndex, otherSessionPlayer.RealmIndex);
-        }
-
-        public bool CanSeePlannedConstructionsOf(byte otherRealmIndex)
-        {
-            return gameSession.CurrentGameState.world.CanSeePlannedConstructionsOf(RealmIndex, otherRealmIndex);
+            return CanSeePlannedConstructionsOf(otherSessionPlayer.RealmIndex);
         }
 
         public bool GetPlannedConstructions(List<EBuilding> plannedBuildings)
@@ -173,7 +173,7 @@ namespace LouveSystems.K2.Lib
             return attacks > 0;
         }
 
-        public bool IsUnderAttack(int regionIndex, out int attackCount, out ERegionAttackType attackTypes)
+        public bool HasAnyAttackPlannedOnRegion(int regionIndex, out int attackCount, out ERegionAttackType attackTypes)
         {
             var transforms = gameSession.AwaitingTransforms.FindAll(
                 o =>
@@ -497,7 +497,7 @@ namespace LouveSystems.K2.Lib
             return true;
         }
 
-        public bool CanControlRealm(int otherRealmIndex)
+        public virtual bool CanControlRealm(int otherRealmIndex)
         {
             if (otherRealmIndex == RealmIndex) {
                 return true;
