@@ -255,9 +255,14 @@ namespace LouveSystems.K2.Lib
         public int GetTreasury()
         {
             int treasuryAtStartOfTurn = gameSession.CurrentGameState.world.GetSilverTreasury(RealmIndex);
-            int silverSpent = gameSession.AwaitingTransforms.Sum(o => CanControlRealm(o.owningRealm) ? o.SilverCost : 0);
+            int silverSpent = GetSpentMoneySoFar();
 
             return treasuryAtStartOfTurn - silverSpent;
+        }
+
+        public int GetSpentMoneySoFar()
+        {
+            return gameSession.AwaitingTransforms.Sum(o => CanControlRealm(o.owningRealm) ? o.SilverCost : 0);
         }
 
         public virtual bool CanPlay()
