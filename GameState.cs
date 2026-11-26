@@ -898,13 +898,19 @@ namespace LouveSystems.K2.Lib
                     effect.Success &&
                     target.RelevantBuilding.HasFlagSafe(EBuilding.Capital)) {
 
-                    byte total = (byte)(world.Realms[effect.previousOwningRealm].GetSubjugatingAttacksReceived(attackOwner) + 1);
+                    byte subjugationAttacksOwner = attackOwner;
+                    if (world.Realms[attackOwner].IsSubjugated(out byte attackOwnerSubjugator)) {
+                        attackOwner = attackOwnerSubjugator; // Alliance leader is the subjugation owner
+                    }
+
+                    byte currentSubjugatingAttacks = world.Realms[effect.previousOwningRealm].GetSubjugatingAttacksReceived(attackOwner);
+                    byte total = (byte)(currentSubjugatingAttacks + 1);
 
                     var subjugation = new ITransformEffect.SubjugationAttemptEffect() {
                         attackingRealmIndex = attackOwner,
                         targetRealmIndex = effect.previousOwningRealm,
                         isFactionHighlight = !rules.subjugationForAll,
-                        attacksBefore = world.Realms[effect.previousOwningRealm].GetSubjugatingAttacksReceived(attackOwner),
+                        attacksBefore = currentSubjugatingAttacks,
                         attacksAfter = total,
                         subjugationCompleted = total >= rules.factions.subjugationAttacksRequired
                     };
